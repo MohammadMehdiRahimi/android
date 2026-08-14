@@ -1,0 +1,26 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="128dp"
+    android:height="128dp"
+    android:viewportWidth="128"
+    android:viewportHeight="128">
+    <!-- Background Circle -->
+    <path
+        android:fillColor="#F0FDF4"
+        android:pathData="M64,64m-56,0a56,56 0 1,0 112,0a56,56 0 1,0 -112,0" />
+    <!-- Main Chat Bubble -->
+    <path
+        android:fillColor="#16A34A"
+        android:pathData="M28,34h56a12,12 0 0,1 12,12v28a12,12 0 0,1 -12,12h-24l-16,12v-12h-16a12,12 0 0,1 -12,-12v-28a12,12 0 0,1 12,-12z" />
+    <!-- Lines inside main bubble -->
+    <path
+        android:fillColor="#DCFCE7"
+        android:pathData="M38,48h36v6h-36z M38,60h24v6h-24z" />
+    <!-- Secondary Chat Bubble -->
+    <path
+        android:fillColor="#22C55E"
+        android:pathData="M52,24h48a10,10 0 0,1 10,10v22a10,10 0 0,1 -10,10h-8v8l-10,-8h-30a10,10 0 0,1 -10,-10v-22a10,10 0 0,1 10,-10z" />
+    <!-- Dots inside secondary bubble -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M64,40a3,3 0 1,0 6,0a3,3 0 1,0 -6,0 M74,40a3,3 0 1,0 6,0a3,3 0 1,0 -6,0 M84,40a3,3 0 1,0 6,0a3,3 0 1,0 -6,0" />
+</vector>

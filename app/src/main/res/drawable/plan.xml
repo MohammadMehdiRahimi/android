@@ -1,0 +1,30 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="128dp"
+    android:height="128dp"
+    android:viewportWidth="128"
+    android:viewportHeight="128">
+    <!-- Background Circle -->
+    <path
+        android:fillColor="#EEF2FF"
+        android:pathData="M64,64m-56,0a56,56 0 1,0 112,0a56,56 0 1,0 -112,0" />
+    <!-- Calendar Body -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M28,32h72a8,8 0 0,1 8,8v60a8,8 0 0,1 -8,8h-72a8,8 0 0,1 -8,-8v-60a8,8 0 0,1 8,-8z" />
+    <!-- Calendar Header -->
+    <path
+        android:fillColor="#4F46E5"
+        android:pathData="M20,32h88v20h-88z" />
+    <!-- Binder Rings -->
+    <path
+        android:fillColor="#312E81"
+        android:pathData="M38,24h8v16h-8z M82,24h8v16h-8z" />
+    <!-- Grid Dots / Items -->
+    <path
+        android:fillColor="#818CF8"
+        android:pathData="M34,60h16v12h-16z M56,60h16v12h-16z M78,60h16v12h-16z M34,78h16v12h-16z M56,78h16v12h-16z M78,78h16v12h-16z" />
+    <!-- Checkmark on one cell -->
+    <path
+        android:fillColor="#10B981"
+        android:pathData="M58,84l4,4l8,-8l2.8,2.8l-10.8,10.8l-6.8,-6.8z" />
+</vector>

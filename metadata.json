@@ -1,0 +1,6 @@
+{
+  "name": "شتاب",
+  "description": "نرم‌افزار هوشمند آزمون‌ساز، برنامه‌ریزی درسی و جعبه لایتنر برای دانش‌آموزان",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

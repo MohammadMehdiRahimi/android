@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!--
+      Local development servers commonly use HTTP and their host is selected
+      through API_BASE_URL in .env, so this cannot be restricted to one IP.
+      Use an HTTPS API_BASE_URL for production builds.
+    -->
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

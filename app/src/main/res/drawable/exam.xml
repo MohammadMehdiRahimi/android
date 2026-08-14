@@ -1,0 +1,30 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="128dp"
+    android:height="128dp"
+    android:viewportWidth="128"
+    android:viewportHeight="128">
+    <!-- Background Circle -->
+    <path
+        android:fillColor="#FFF7ED"
+        android:pathData="M64,64m-56,0a56,56 0 1,0 112,0a56,56 0 1,0 -112,0" />
+    <!-- Paper Sheet -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M32,24h52l18,18v62a6,6 0 0,1 -6,6h-64a6,6 0 0,1 -6,-6v-74a6,6 0 0,1 6,-6z" />
+    <!-- Folded Corner -->
+    <path
+        android:fillColor="#FFEDD5"
+        android:pathData="M84,24l18,18h-18z" />
+    <!-- Lines on paper -->
+    <path
+        android:fillColor="#EA580C"
+        android:pathData="M44,44h32v6h-32z M44,58h40v6h-40z M44,72h40v6h-40z M44,86h24v6h-24z" />
+    <!-- Grade A+ Circle Badge -->
+    <path
+        android:fillColor="#F97316"
+        android:pathData="M84,84m-12,0a12,12 0 1,0 24,0a12,12 0 1,0 -24,0" />
+    <!-- Checkmark on Badge -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M78,84l4,4l8,-8l2,2l-10,10l-6,-6z" />
+</vector>
