@@ -1,0 +1,308 @@
+package com.example.ui.features.onboarding
+
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
+import com.example.R
+import com.example.ui.theme.VazirmatnFontFamily
+import kotlinx.coroutines.launch
+
+private val PurplePrimary = Color(0xFF6851FF)
+private val DarkTitleColor = Color(0xFF191B2D)
+private val SubtitleColor = Color(0xFF555974)
+private val DotInactiveColor = Color(0xFFDCDCFA)
+private val BackgroundTop = Color(0xFFFAF9FE)
+private val BackgroundBottom = Color(0xFFF3F2FD)
+
+@Composable
+fun OnboardingScreen(navController: NavController) {
+    val pagerState = rememberPagerState(pageCount = { 2 })
+    val coroutineScope = rememberCoroutineScope()
+
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(BackgroundTop, BackgroundBottom)
+                    )
+                )
+                .statusBarsPadding()
+                .navigationBarsPadding()
+        ) {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Horizontal pager containing the 2 onboarding pages
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                ) { page ->
+                    if (page == 0) {
+                        OnboardingPageOne()
+                    } else {
+                        OnboardingPageTwo()
+                    }
+                }
+
+                // Page indicators (2 dots)
+                Row(
+                    modifier = Modifier
+                        .padding(bottom = 28.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    repeat(2) { index ->
+                        val isSelected = pagerState.currentPage == index
+                        val width by animateDpAsState(
+                            targetValue = if (isSelected) 10.dp else 10.dp,
+                            animationSpec = tween(300),
+                            label = "dot_width"
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(width = width, height = 10.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    if (isSelected) PurplePrimary else DotInactiveColor
+                                )
+                        )
+                    }
+                }
+
+                // Bottom Action Button
+                Button(
+                    onClick = {
+                        if (pagerState.currentPage < 1) {
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(1)
+                            }
+                        } else {
+                            navController.navigate("login_phone") {
+                                popUpTo("onboarding") { inclusive = true }
+                            }
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp)
+                        .padding(bottom = 24.dp)
+                        .height(56.dp),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = PurplePrimary
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(
+                        defaultElevation = 2.dp,
+                        pressedElevation = 6.dp
+                    )
+                ) {
+                    Text(
+                        text = if (pagerState.currentPage == 0) "بعدی" else "شروع کنید",
+                        color = Color.White,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = VazirmatnFontFamily
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun OnboardingPageOne() {
+    val scrollState = rememberScrollState()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(scrollState)
+            .padding(horizontal = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.SpaceBetween
+    ) {
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Vector Illustration
+        Image(
+            painter = painterResource(id = R.drawable.onboarding_page_1_vector),
+            contentDescription = "برنامه هوشمند شتاب",
+            modifier = Modifier
+                .fillMaxWidth(0.94f)
+                .heightIn(max = 380.dp)
+                .aspectRatio(0.92f),
+            contentScale = ContentScale.Fit
+        )
+
+        Spacer(modifier = Modifier.height(28.dp))
+
+        // Title: شتاب، برنامه فرداتو می‌سازه
+        val titleText = buildAnnotatedString {
+            withStyle(
+                SpanStyle(
+                    color = PurplePrimary,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontFamily = VazirmatnFontFamily,
+                    fontSize = 24.sp
+                )
+            ) {
+                append("شتاب،")
+            }
+            withStyle(
+                SpanStyle(
+                    color = DarkTitleColor,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontFamily = VazirmatnFontFamily,
+                    fontSize = 24.sp
+                )
+            ) {
+                append(" برنامه فرداتو می‌سازه")
+            }
+        }
+
+        Text(
+            text = titleText,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // Subtitle / Description text
+        val subtitleText = buildAnnotatedString {
+            withStyle(
+                SpanStyle(
+                    color = SubtitleColor,
+                    fontWeight = FontWeight.Normal,
+                    fontFamily = VazirmatnFontFamily,
+                    fontSize = 15.sp
+                )
+            ) {
+                append("بر اساس عملکرد امروزت، شتاب بهترین برنامه\nمطالعه فردا رو بهت پیشنهاد می‌ده.\n")
+            }
+            withStyle(
+                SpanStyle(
+                    color = PurplePrimary,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = VazirmatnFontFamily,
+                    fontSize = 15.sp
+                )
+            ) {
+                append("هوشمند،")
+            }
+            withStyle(
+                SpanStyle(
+                    color = SubtitleColor,
+                    fontWeight = FontWeight.Normal,
+                    fontFamily = VazirmatnFontFamily,
+                    fontSize = 15.sp
+                )
+            ) {
+                append(" منظم و کاملاً شخصی‌سازی شده!")
+            }
+        }
+
+        Text(
+            text = subtitleText,
+            textAlign = TextAlign.Center,
+            lineHeight = 25.sp,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp)
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+    }
+}
+
+@Composable
+fun OnboardingPageTwo() {
+    val scrollState = rememberScrollState()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(scrollState)
+            .padding(horizontal = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.SpaceBetween
+    ) {
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Vector Illustration for page 2
+        Image(
+            painter = painterResource(id = R.drawable.onboarding_page_2_vector),
+            contentDescription = "آزمون و سنجش شتاب",
+            modifier = Modifier
+                .fillMaxWidth(0.94f)
+                .heightIn(max = 380.dp)
+                .aspectRatio(0.92f),
+            contentScale = ContentScale.Fit
+        )
+
+        Spacer(modifier = Modifier.height(28.dp))
+
+        Text(
+            text = "مسیر پیشرفت با شتاب",
+            color = DarkTitleColor,
+            fontSize = 24.sp,
+            fontWeight = FontWeight.ExtraBold,
+            fontFamily = VazirmatnFontFamily,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        Text(
+            text = "با تحلیل دقیق عملکرد و آزمون‌های هوشمند، هر روز یک قدم به هدفت نزدیک‌تر شو.",
+            color = SubtitleColor,
+            fontSize = 15.sp,
+            lineHeight = 25.sp,
+            fontFamily = VazirmatnFontFamily,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp)
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+    }
+}

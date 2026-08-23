@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.ui.features.onboarding.OnboardingScreen
 import com.example.ui.main.ShetabApp
 import com.example.ui.screens.LoginOtpScreen
 import com.example.ui.screens.LoginPhoneScreen
@@ -106,7 +107,7 @@ class MainActivity : ComponentActivity() {
                         navController = navController,
                         startDestination = if (
                             com.example.network.ApiClient.getTokenManager()?.isLoggedIn() == true
-                        ) "dashboard" else "login_phone",
+                        ) "dashboard" else "onboarding",
                         enterTransition = {
                             slideIntoContainer(
                                 AnimatedContentTransitionScope.SlideDirection.Left,
@@ -132,6 +133,9 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                     ) {
+                        composable("onboarding") {
+                            OnboardingScreen(navController)
+                        }
                         composable("login_phone") {
                             LoginPhoneScreen(navController)
                         }

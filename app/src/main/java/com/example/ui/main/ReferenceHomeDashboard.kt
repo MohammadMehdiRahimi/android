@@ -455,7 +455,7 @@ private fun ReferenceFeatureGrid(navController: NavController) {
                     modifier = Modifier.fillMaxWidth().weight(1f),
                     title = "لیدرهای رقابتی فعال",
                     subtitle = "تو یک قدم جایزه‌ای",
-                    imageRes = R.drawable.home_league_illustration,
+                    imageRes = R.drawable.league,
                     background = listOf(Color(0xFFF1F6FF), Color(0xFFEAF2FF)),
                     onClick = { navController.navigate("league") },
                 )

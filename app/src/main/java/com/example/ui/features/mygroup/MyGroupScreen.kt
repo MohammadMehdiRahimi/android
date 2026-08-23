@@ -370,7 +370,7 @@ private fun EmptyGroupContent(results: List<StudyGroupDto>, vm: MyGroupViewModel
         item {
             Spacer(Modifier.height(14.dp))
             Image(
-                painter = painterResource(R.drawable.group_empty_illustration),
+                painter = painterResource(R.drawable.study_group),
                 contentDescription = "ساخت یا پیدا کردن گروه مطالعه",
                 modifier = Modifier.fillMaxWidth().height(260.dp),
                 contentScale = ContentScale.Fit,
