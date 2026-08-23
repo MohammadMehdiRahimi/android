@@ -1,3 +1,21 @@
 <resources>
     <string name="app_name">شتاب</string>
+    <string name="login_title">شماره موبایل خود را وارد کنید</string>
+    <string name="login_subtitle">کد تأیید برای شما ارسال خواهد شد.</string>
+    <string name="login_phone_placeholder">۰۹۱۲ ۳۴۵ ۶۷۸۹</string>
+    <string name="login_phone_label">شماره موبایل</string>
+    <string name="login_submit_button">ورود و دریافت کد تأیید</string>
+    <string name="login_terms_prefix">با ورود به برنامه، با </string>
+    <string name="login_terms_link">شرایط و قوانین</string>
+    <string name="login_terms_suffix"> شتاب موافقت می‌کنید.</string>
+    <string name="login_error_invalid_phone">لطفاً شماره موبایل معتبر (۱۱ رقمی) وارد کنید.</string>
+    <string name="otp_title">کد تأیید را وارد کنید</string>
+    <string name="otp_subtitle_prefix">کد ۶ رقمی ارسال شده به شماره</string>
+    <string name="otp_subtitle_suffix">را وارد کنید.</string>
+    <string name="otp_timer_label">زمان باقی‌مانده:</string>
+    <string name="otp_resend_code">ارسال مجدد کد</string>
+    <string name="otp_resend_cooldown">(۲ دقیقه بعد)</string>
+    <string name="otp_submit_button">تأیید کد</string>
+    <string name="otp_error_invalid_code">کد تأیید وارد شده نامعتبر یا منقضی شده است.</string>
+    <string name="otp_resend_success">کد تأیید مجدداً ارسال شد.</string>
 </resources>

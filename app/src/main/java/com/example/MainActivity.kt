@@ -17,6 +17,8 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.ui.features.auth.login.LoginScreen
+import com.example.ui.features.auth.otp.VerifyOtpScreen
 import com.example.ui.features.onboarding.OnboardingScreen
 import com.example.ui.main.ShetabApp
 import com.example.ui.screens.LoginOtpScreen
@@ -137,10 +139,19 @@ class MainActivity : ComponentActivity() {
                             OnboardingScreen(navController)
                         }
                         composable("login_phone") {
-                            LoginPhoneScreen(navController)
+                            LoginScreen(
+                                navController = navController,
+                                onNavigateToOtp = { phone ->
+                                    navController.navigate("verify_otp/${android.net.Uri.encode(phone)}")
+                                }
+                            )
+                        }
+                        composable("verify_otp/{phoneNumber}") { backStackEntry ->
+                            val phone = backStackEntry.arguments?.getString("phoneNumber").orEmpty()
+                            VerifyOtpScreen(navController = navController, phoneNumber = phone)
                         }
                         composable("login_otp") {
-                            LoginOtpScreen(navController)
+                            VerifyOtpScreen(navController = navController)
                         }
                         composable("dashboard") {
                             var lastBackPressTime by remember { mutableStateOf(0L) }
