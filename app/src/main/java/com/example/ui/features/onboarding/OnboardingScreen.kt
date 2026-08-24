@@ -274,44 +274,22 @@ fun OnboardingPageTwo() {
             .verticalScroll(scrollState)
             .padding(horizontal = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.SpaceBetween
+        verticalArrangement = Arrangement.Top
     ) {
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Top Logo Header: شتاب ⚡
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
-            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
-        ) {
-            Text(
-                text = "شتاب",
-                color = PurplePrimary,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Black,
-                fontFamily = VazirmatnFontFamily
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Icon(
-                imageVector = Icons.Filled.Bolt,
-                contentDescription = null,
-                tint = PurplePrimary,
-                modifier = Modifier.size(32.dp)
-            )
-        }
-
-        // Vector Illustration for page 2
+        // Vector Illustration for page 2 - compact height to bring text up
         Image(
             painter = painterResource(id = R.drawable.onboarding_page_2_vector),
             contentDescription = "آزمون و رقابت در شتاب",
             modifier = Modifier
-                .fillMaxWidth(0.96f)
-                .heightIn(max = 360.dp)
-                .aspectRatio(0.95f),
+                .fillMaxWidth(0.82f)
+                .heightIn(max = 220.dp)
+                .aspectRatio(1.15f),
             contentScale = ContentScale.Fit
         )
 
-        Spacer(modifier = Modifier.height(18.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
         // Headlines:
         // رقابت کن، آزمون بده و با لذت درس بخون
@@ -323,7 +301,7 @@ fun OnboardingPageTwo() {
             Text(
                 text = "رقابت کن، آزمون بده و با لذت درس بخون",
                 color = DarkTitleColor,
-                fontSize = 21.sp,
+                fontSize = 20.sp,
                 fontWeight = FontWeight.ExtraBold,
                 fontFamily = VazirmatnFontFamily,
                 textAlign = TextAlign.Center,
@@ -333,7 +311,7 @@ fun OnboardingPageTwo() {
             Text(
                 text = "هوش مصنوعی هم تحلیلت می‌کنه",
                 color = PurpleLight,
-                fontSize = 21.sp,
+                fontSize = 20.sp,
                 fontWeight = FontWeight.ExtraBold,
                 fontFamily = VazirmatnFontFamily,
                 textAlign = TextAlign.Center,
@@ -341,14 +319,14 @@ fun OnboardingPageTwo() {
             )
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
         // Subtitle:
         Text(
             text = "شتاب لیگ‌های رقابتی، آزمون‌ساز حرفه‌ای و تحلیل هوشمند رو\nکنار هم آورده تا یادگیری برات جذاب‌تر و مؤثرتر بشه.",
             color = SubtitleColor,
-            fontSize = 14.sp,
-            lineHeight = 23.sp,
+            fontSize = 13.5.sp,
+            lineHeight = 22.sp,
             fontFamily = VazirmatnFontFamily,
             textAlign = TextAlign.Center,
             modifier = Modifier
@@ -356,7 +334,7 @@ fun OnboardingPageTwo() {
                 .padding(horizontal = 8.dp)
         )
 
-        Spacer(modifier = Modifier.height(18.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
         // 3 Feature Cards in a row:
         // RTL order: [لیگ رقابتی] [آزمون‌ساز] [تحلیل هوشمند]
@@ -383,7 +361,7 @@ fun OnboardingPageTwo() {
             )
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
     }
 }
 

@@ -49,6 +49,15 @@ class TokenManager(context: Context) {
         editor.apply()
     }
 
+    fun saveUserAcademicInfo(major: String?, grade: String?) {
+        val editor = prefs.edit()
+        if (!major.isNullOrBlank()) editor.putString("user_major", major.trim())
+        if (!grade.isNullOrBlank()) editor.putString("user_grade", grade.trim())
+        editor.apply()
+    }
+
+    fun getUserMajor(): String? = prefs.getString("user_major", null)
+    fun getUserGrade(): String? = prefs.getString("user_grade", null)
     fun getUserId(): String? = prefs.getString("user_id", null)
     fun getUserPhone(): String? = prefs.getString("user_phone", null)
     fun getUserRole(): String? = prefs.getString("user_role", null)
@@ -85,6 +94,29 @@ class TokenManager(context: Context) {
         if (expiry > System.currentTimeMillis()) return true
         clearToken()
         return false
+    }
+
+    fun getRegistrationToken(): String? = prefs.getString("registration_token", null)
+
+    fun getRegistrationPhone(): String? = prefs.getString("registration_phone", null) ?: getUserPhone()
+
+    fun saveRegistrationToken(token: String) {
+        prefs.edit().putString("registration_token", token).apply()
+    }
+
+    fun saveRegistrationData(token: String, phone: String) {
+        prefs.edit()
+            .putString("registration_token", token)
+            .putString("registration_phone", phone)
+            .putString("user_phone", phone)
+            .apply()
+    }
+
+    fun clearRegistrationToken() {
+        prefs.edit()
+            .remove("registration_token")
+            .remove("registration_phone")
+            .apply()
     }
 
     fun clearToken() {

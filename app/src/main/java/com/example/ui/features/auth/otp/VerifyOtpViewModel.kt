@@ -20,15 +20,16 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class VerifyOtpViewModel(
-    initialPhone: String = ""
+    initialPhone: String = "",
+    authRepository: com.example.data.repository.AuthRepository? = null
 ) : ViewModel() {
 
-    private val authRepository = AuthRepositoryImpl(
+    private val repository = authRepository ?: AuthRepositoryImpl(
         apiService = ApiClient.apiService,
         tokenManager = ApiClient.getTokenManager()!!
     )
-    private val sendOtpUseCase = SendOtpUseCase(authRepository)
-    private val verifyOtpUseCase = VerifyOtpUseCase(authRepository)
+    private val sendOtpUseCase = SendOtpUseCase(repository)
+    private val verifyOtpUseCase = VerifyOtpUseCase(repository)
 
     private val _uiState = MutableStateFlow(VerifyOtpUiState())
     val uiState: StateFlow<VerifyOtpUiState> = _uiState.asStateFlow()
@@ -151,7 +152,7 @@ class VerifyOtpViewModel(
 
     fun verifyCode(
         context: Context,
-        onSuccess: (isNewUser: Boolean, registrationToken: String?) -> Unit
+        onSuccess: (isNewUser: Boolean, registrationToken: String?, onboardingRequired: Boolean) -> Unit
     ) {
         val currentState = _uiState.value
         val phone = currentState.rawPhoneNumber
@@ -180,7 +181,9 @@ class VerifyOtpViewModel(
                                     registrationToken = authData.registrationToken
                                 )
                             }
-                            onSuccess(true, authData.registrationToken)
+                            val tokenManager = ApiClient.getTokenManager()!!
+                            tokenManager.saveRegistrationData(authData.registrationToken, phone)
+                            onSuccess(true, authData.registrationToken, false)
                         } else if (authData != null && !authData.accessToken.isNullOrBlank()) {
                             // authData user details can be saved
                             val tokenManager = ApiClient.getTokenManager()!!
@@ -206,7 +209,8 @@ class VerifyOtpViewModel(
                                     isNewUser = false
                                 )
                             }
-                            onSuccess(false, null)
+                            val onboardingRequired = authData.onboarding?.required == true
+                            onSuccess(false, null, onboardingRequired)
                         } else {
                             _uiState.update {
                                 it.copy(

@@ -20,6 +20,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
+import com.example.network.NetworkResult
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(qualifiers = RobolectricDeviceQualifiers.Pixel8, sdk = [34])
@@ -28,9 +32,23 @@ class VerifyOtpScreenTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
+    private val mockRepo = object : com.example.data.repository.AuthRepository {
+        override fun sendOtp(phone: String): Flow<NetworkResult<Unit>> = flow {}
+        override fun verifyOtp(phone: String, code: String): Flow<NetworkResult<com.example.network.OtpVerifyResponseDto>> = flow {}
+        override fun register(
+            phone: String,
+            registrationToken: String,
+            fullName: String,
+            grade: String,
+            fieldOfStudy: String?,
+            deviceType: String
+        ): Flow<NetworkResult<com.example.network.AuthResponseDto>> = flow {}
+        override fun logout(): Flow<NetworkResult<Unit>> = flow {}
+    }
+
     @Test
     fun verifyOtpScreen_elementsAreDisplayed() {
-        val viewModel = VerifyOtpViewModel("09123456789")
+        val viewModel = VerifyOtpViewModel("09123456789", mockRepo)
 
         composeTestRule.setContent {
             MyApplicationTheme(appTheme = AppTheme.PESARANE) {
@@ -63,7 +81,7 @@ class VerifyOtpScreenTest {
 
     @Test
     fun verifyOtpScreen_typingOtp_updatesOtpBoxesAndState() {
-        val viewModel = VerifyOtpViewModel("09123456789")
+        val viewModel = VerifyOtpViewModel("09123456789", mockRepo)
 
         composeTestRule.setContent {
             MyApplicationTheme(appTheme = AppTheme.PESARANE) {

@@ -150,6 +150,9 @@ class MainActivity : ComponentActivity() {
                             val phone = backStackEntry.arguments?.getString("phoneNumber").orEmpty()
                             VerifyOtpScreen(navController = navController, phoneNumber = phone)
                         }
+                        composable("register_route") {
+                            com.example.ui.features.auth.register.RegisterScreen(navController = navController)
+                        }
                         composable("login_otp") {
                             VerifyOtpScreen(navController = navController)
                         }
@@ -187,6 +190,9 @@ class MainActivity : ComponentActivity() {
                         }
                         composable("study_plan") {
                             com.example.ui.features.studyplan.StudyPlanScreen(navController)
+                        }
+                        composable("create_study_plan") {
+                            com.example.ui.features.studyplan.CreateStudyPlanScreen(navController)
                         }
                         composable("focus_timer/{taskId}") { backStackEntry ->
                             val taskId = backStackEntry.arguments?.getString("taskId")?.toIntOrNull() ?: 0

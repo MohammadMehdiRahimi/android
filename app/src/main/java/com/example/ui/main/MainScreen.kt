@@ -53,6 +53,7 @@ import com.example.ui.features.dashboard.DashboardTopCard
 import com.example.ui.features.exams.ExamsScreen
 import com.example.ui.features.profile.ProfileScreen
 import com.example.ui.features.studyplan.StudyPlanScreen
+import com.example.ui.features.studyplan.StudyPlanSkeletonLoading
 import com.example.ui.theme.AppTheme
 import com.example.ui.theme.LocalShetabColors
 import kotlinx.coroutines.delay
@@ -182,7 +183,7 @@ fun HomeScreenContent(
             .statusBarsPadding()
             .verticalScroll(rememberScrollState())
             .background(Color(0xFFFBFBFD))
-            .padding(top = 4.dp, bottom = 28.dp)
+            .padding(top = 4.dp, bottom = 0.dp)
     ) {
         ReferenceHomeDashboard(
             navController = navController,
@@ -1919,25 +1920,22 @@ fun ShetabBottomNavigation(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 18.dp, end = 18.dp, top = 22.dp, bottom = 7.dp)
+                .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp)
                 .navigationBarsPadding(),
             contentAlignment = Alignment.BottomCenter,
         ) {
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(74.dp)
-                    .shadow(
-                        elevation = 4.dp,
-                        shape = RoundedCornerShape(34.dp),
-                        ambientColor = Color(0x18202B55),
-                        spotColor = Color(0x18202B55),
-                    ),
-                shape = RoundedCornerShape(34.dp),
+                    .height(60.dp),
+                shape = RoundedCornerShape(26.dp),
                 color = Color.White,
+                shadowElevation = 0.dp
             ) {
                 Row(
-                    modifier = Modifier.fillMaxSize().padding(horizontal = 7.dp),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     val navItems = listOf(
@@ -1961,28 +1959,33 @@ fun ShetabBottomNavigation(
                         ) {
                             if (item.index == 0) {
                                 Text(
-                                    "خانه",
+                                    text = "خانه",
                                     color = Color(0xFF7656F5),
                                     fontFamily = com.example.ui.theme.IranSansFontFamily,
-                                    fontSize = 10.sp,
+                                    fontSize = 9.sp,
                                     fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 9.dp),
+                                    modifier = Modifier
+                                        .align(Alignment.BottomCenter)
+                                        .padding(bottom = 5.dp),
                                 )
                             } else {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
                                     Icon(
                                         imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
                                         contentDescription = item.title,
                                         tint = if (selected) Color(0xFF7656F5) else Color(0xFF9CA4BC),
-                                        modifier = Modifier.size(23.dp),
+                                        modifier = Modifier.size(20.dp),
                                     )
-                                    Spacer(Modifier.height(4.dp))
+                                    Spacer(Modifier.height(2.dp))
                                     Text(
-                                        item.title,
+                                        text = item.title,
                                         color = if (selected) Color(0xFF7656F5) else Color(0xFF9CA4BC),
                                         fontFamily = com.example.ui.theme.IranSansFontFamily,
                                         fontSize = 9.sp,
-                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
                                         maxLines = 1,
                                     )
                                 }
@@ -1991,12 +1994,13 @@ fun ShetabBottomNavigation(
                     }
                 }
             }
+
+            // Central Minimal Action Button for Home (خانه)
             Box(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .offset(y = (-17).dp)
-                    .size(66.dp)
-                    .shadow(6.dp, CircleShape, ambientColor = Color(0x337656F5), spotColor = Color(0x337656F5))
+                    .offset(y = (-10).dp)
+                    .size(48.dp)
                     .clip(CircleShape)
                     .background(Color(0xFF7656F5))
                     .clickable(
@@ -2005,7 +2009,12 @@ fun ShetabBottomNavigation(
                     ) { onTabSelected(0) },
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Filled.Home, contentDescription = "خانه", tint = Color.White, modifier = Modifier.size(31.dp))
+                Icon(
+                    imageVector = Icons.Filled.Home,
+                    contentDescription = "خانه",
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
             }
         }
     }

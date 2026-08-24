@@ -114,9 +114,14 @@ fun VerifyOtpScreen(
             }
         }
     ),
-    onVerificationSuccess: (isNewUser: Boolean, registrationToken: String?) -> Unit = { isNewUser, token ->
+    onVerificationSuccess: (isNewUser: Boolean, registrationToken: String?, onboardingRequired: Boolean) -> Unit = { isNewUser, token, onboardingRequired ->
         if (isNewUser && !token.isNullOrBlank()) {
-            navController.navigate("onboarding") {
+            navController.navigate("register_route") {
+                popUpTo("login_phone") { inclusive = true }
+            }
+        } else if (onboardingRequired) {
+            // Ideally navigate to onboarding profile completion, but for now we route to register if it's the same or dashboard if different
+            navController.navigate("dashboard") {
                 popUpTo("login_phone") { inclusive = true }
             }
         } else {
@@ -229,21 +234,36 @@ fun VerifyOtpScreen(
                     ) {
                         Text(
                             text = stringResource(id = R.string.otp_subtitle_prefix),
-                            fontSize = 14.5.sp,
+                            fontSize = 14.sp,
                             fontWeight = FontWeight.Normal,
                             color = TextGray,
                             fontFamily = VazirmatnFontFamily,
                             textAlign = TextAlign.Center
                         )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = "${uiState.formattedPhoneNumber} ${stringResource(id = R.string.otp_subtitle_suffix)}",
-                            fontSize = 14.5.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = TextDark,
-                            fontFamily = VazirmatnFontFamily,
-                            textAlign = TextAlign.Center
-                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = stringResource(id = R.string.otp_subtitle_suffix),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Normal,
+                                color = TextGray,
+                                fontFamily = VazirmatnFontFamily
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                                Text(
+                                    text = uiState.formattedPhoneNumber,
+                                    fontSize = 14.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = TextDark,
+                                    fontFamily = VazirmatnFontFamily,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(26.dp))
@@ -264,8 +284,8 @@ fun VerifyOtpScreen(
                         onSubmit = {
                             if (uiState.isCodeComplete && !uiState.isLoading) {
                                 focusManager.clearFocus()
-                                viewModel.verifyCode(context) { isNew, token ->
-                                    onVerificationSuccess(isNew, token)
+                                viewModel.verifyCode(context) { isNew, token, onboardingRequired ->
+                                    onVerificationSuccess(isNew, token, onboardingRequired)
                                 }
                             }
                         }
@@ -350,8 +370,8 @@ fun VerifyOtpScreen(
                     Button(
                         onClick = {
                             focusManager.clearFocus()
-                            viewModel.verifyCode(context) { isNew, token ->
-                                onVerificationSuccess(isNew, token)
+                            viewModel.verifyCode(context) { isNew, token, onboardingRequired ->
+                                onVerificationSuccess(isNew, token, onboardingRequired)
                             }
                         },
                         modifier = Modifier

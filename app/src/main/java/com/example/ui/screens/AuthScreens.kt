@@ -1235,12 +1235,17 @@ fun AuthBottomSheetScreen(
                                                 isNetworkLoading = true
                                                 coroutineScope.launch {
                                                     val fieldCode = if (isHighSchool) selectedMajorCode else null
-                                                    val result = if (registrationToken != null) {
+                                                    val currentRegToken = registrationToken
+                                                    val result = if (currentRegToken != null) {
+                                                        val phone = com.example.network.ApiClient.getTokenManager()?.getRegistrationPhone()
+                                                            ?: com.example.network.ApiClient.getTokenManager()?.getUserPhone()
+                                                            ?: globalUserPhoneNumber
                                                         com.example.network.safeApiCall {
                                                             com.example.network.ApiClient.apiService.register(
-                                                                com.example.network.RegisterOtpDto(
-                                                                    phone = globalUserPhoneNumber,
-                                                                    registrationToken = registrationToken!!,
+                                                                com.example.network.RegisterRequest(
+                                                                    phone = phone,
+                                                                    registrationToken = currentRegToken,
+                                                                    deviceType = "ANDROID",
                                                                     fullName = nameInput.trim(),
                                                                     grade = selectedGradeCode,
                                                                     fieldOfStudy = fieldCode,

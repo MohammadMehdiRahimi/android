@@ -6,6 +6,7 @@ import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.Headers
 import retrofit2.http.PATCH
 import retrofit2.http.Multipart
 import retrofit2.http.Part
@@ -17,8 +18,9 @@ import retrofit2.http.Query
 interface ApiService {
     @POST("auth/send-otp") suspend fun requestOtp(@Body request: OtpRequestDto): Response<OtpRequestResponseDto>
     @POST("auth/verify-otp") suspend fun verifyOtp(@Body request: OtpVerifyDto): Response<OtpVerifyResponseDto>
-    @POST("auth/register") suspend fun register(@Body request: RegisterOtpDto): Response<AuthResponseDto>
+    @POST("auth/register") suspend fun register(@Body request: RegisterRequest): Response<AuthResponseDto>
     @POST("auth/logout") suspend fun logout(): Response<SimpleResponseDto>
+    @Headers("No-Authentication: true")
     @GET("base-info/onboarding") suspend fun getOnboardingOptions(): Response<OnboardingOptionsResponseDto>
     @PUT("student-profile/me/onboarding") suspend fun completeOnboarding(@Body request: CompleteOnboardingDto): Response<SimpleResponseDto>
     @GET("users/me") suspend fun getMe(): Response<UserProfileResponseDto>
@@ -118,11 +120,48 @@ data class AuthBodyDto(
 )
 data class OtpVerifyResponseDto(val body: AuthBodyDto? = null, val statusCode: Int? = null)
 data class AuthResponseDto(val body: AuthBodyDto? = null, val statusCode: Int? = null)
-data class RegisterOtpDto(val phone: String, val registrationToken: String, val deviceType: String = "ANDROID", val fullName: String, val grade: String, val fieldOfStudy: String? = null)
+data class RegisterRequest(
+    val phone: String,
+    val registrationToken: String,
+    val deviceType: String = "ANDROID",
+    val fullName: String,
+    val grade: String,
+    val fieldOfStudy: String? = null
+)
 data class CompleteOnboardingDto(val fullName: String, val grade: String, val fieldOfStudy: String? = null)
-data class AcademicOptionDto(val code: String, val label: String, val sortOrder: Int = 0, val requiresFieldOfStudy: Boolean = false)
+data class AcademicOptionDto(
+    val code: String = "",
+    val label: String = "",
+    val key: String? = null,
+    val value: String? = null,
+    val sortOrder: Int = 0,
+    val requiresFieldOfStudy: Boolean = false
+) {
+    constructor(code: String, label: String, requiresFieldOfStudy: Boolean = false) : this(
+        code = code,
+        label = label,
+        key = code,
+        value = label,
+        sortOrder = 0,
+        requiresFieldOfStudy = requiresFieldOfStudy
+    )
+
+    val effectiveKey: String get() = key?.ifBlank { null } ?: code
+    val effectiveValue: String get() = value?.ifBlank { null } ?: label
+}
 data class OnboardingOptionsBody(val grades: List<AcademicOptionDto> = emptyList(), val fieldsOfStudy: List<AcademicOptionDto> = emptyList())
-data class OnboardingOptionsResponseDto(val body: OnboardingOptionsBody? = null)
+data class OnboardingOptionsResponseDto(
+    val body: OnboardingOptionsBody? = null,
+    val grades: List<AcademicOptionDto>? = null,
+    val fieldsOfStudy: List<AcademicOptionDto>? = null,
+    val statusCode: Int? = null
+) {
+    val resolvedGrades: List<AcademicOptionDto>
+        get() = body?.grades?.takeIf { it.isNotEmpty() } ?: grades ?: emptyList()
+
+    val resolvedFieldsOfStudy: List<AcademicOptionDto>
+        get() = body?.fieldsOfStudy?.takeIf { it.isNotEmpty() } ?: fieldsOfStudy ?: emptyList()
+}
 data class UserProfileResponseDto(val body: UserDto? = null, val statusCode: Int? = null)
 data class ProgressionResponseDto(val body: ProgressionDto? = null, val statusCode: Int? = null)
 data class SimpleResponseDto(val body: Any? = null, val statusCode: Int? = null)

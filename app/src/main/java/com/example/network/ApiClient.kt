@@ -24,10 +24,8 @@ import java.util.concurrent.TimeUnit
 object ApiClient {
     /**
      * Single source of truth for every Shetab backend request.
-     * BuildConfig.API_BASE_URL is generated from the project-level .env file
-     * by the Secrets Gradle Plugin (with .env.example as its fallback).
      */
-    private val baseUrl = normalizeBaseUrl(BuildConfig.API_BASE_URL)
+    private val baseUrl = normalizeBaseUrl("https://api.weshetab.ir/")
     
     private var retrofit: Retrofit? = null
     private var okHttpClient: OkHttpClient? = null

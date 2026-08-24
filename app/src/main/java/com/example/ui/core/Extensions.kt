@@ -5,6 +5,10 @@ fun String.toPersianNumber(): String {
     return this.map { if (it in '0'..'9') persianNumbers[it - '0'] else it }.joinToString("")
 }
 
+fun Int.toPersianNumber(): String = this.toString().toPersianNumber()
+fun Long.toPersianNumber(): String = this.toString().toPersianNumber()
+fun Number.toPersianNumber(): String = this.toString().toPersianNumber()
+
 fun String.toPersianNumberSafe(): String {
     val builder = StringBuilder()
     var inTag = false

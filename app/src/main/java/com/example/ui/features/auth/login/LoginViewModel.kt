@@ -15,10 +15,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-class LoginViewModel : ViewModel() {
+class LoginViewModel(
+    authRepository: com.example.data.repository.AuthRepository? = null
+) : ViewModel() {
 
     private val sendOtpUseCase = SendOtpUseCase(
-        AuthRepositoryImpl(
+        authRepository ?: AuthRepositoryImpl(
             apiService = ApiClient.apiService,
             tokenManager = ApiClient.getTokenManager()!!
         )

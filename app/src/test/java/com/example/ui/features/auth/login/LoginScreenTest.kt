@@ -19,6 +19,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
+import com.example.network.NetworkResult
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(qualifiers = RobolectricDeviceQualifiers.Pixel8, sdk = [34])
@@ -27,13 +31,27 @@ class LoginScreenTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
+    private val mockRepo = object : com.example.data.repository.AuthRepository {
+        override fun sendOtp(phone: String): Flow<NetworkResult<Unit>> = flow {}
+        override fun verifyOtp(phone: String, code: String): Flow<NetworkResult<com.example.network.OtpVerifyResponseDto>> = flow {}
+        override fun register(
+            phone: String,
+            registrationToken: String,
+            fullName: String,
+            grade: String,
+            fieldOfStudy: String?,
+            deviceType: String
+        ): Flow<NetworkResult<com.example.network.AuthResponseDto>> = flow {}
+        override fun logout(): Flow<NetworkResult<Unit>> = flow {}
+    }
+
     @Test
     fun loginScreen_elementsAreDisplayed() {
         composeTestRule.setContent {
             MyApplicationTheme(appTheme = AppTheme.PESARANE) {
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                     val navController = rememberNavController()
-                    LoginScreen(navController = navController)
+                    LoginScreen(navController = navController, viewModel = LoginViewModel(mockRepo))
                 }
             }
         }
@@ -49,7 +67,7 @@ class LoginScreenTest {
 
     @Test
     fun loginScreen_inputPhone_updatesState() {
-        val viewModel = LoginViewModel()
+        val viewModel = LoginViewModel(mockRepo)
 
         composeTestRule.setContent {
             MyApplicationTheme(appTheme = AppTheme.PESARANE) {

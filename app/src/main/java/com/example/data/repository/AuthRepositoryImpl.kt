@@ -1,10 +1,12 @@
 package com.example.data.repository
 
 import com.example.network.ApiService
+import com.example.network.AuthResponseDto
 import com.example.network.NetworkResult
 import com.example.network.OtpRequestDto
 import com.example.network.OtpVerifyDto
 import com.example.network.OtpVerifyResponseDto
+import com.example.network.RegisterRequest
 import com.example.network.safeApiCall
 import com.example.network.TokenManager
 import kotlinx.coroutines.flow.Flow
@@ -52,6 +54,59 @@ class AuthRepositoryImpl(
             is NetworkResult.Exception -> {
                 emit(result)
             }
+        }
+    }
+
+    override fun register(
+        phone: String,
+        registrationToken: String,
+        fullName: String,
+        grade: String,
+        fieldOfStudy: String?,
+        deviceType: String
+    ): Flow<NetworkResult<AuthResponseDto>> = flow {
+        val request = RegisterRequest(
+            phone = phone,
+            registrationToken = registrationToken,
+            deviceType = deviceType,
+            fullName = fullName.trim(),
+            grade = grade,
+            fieldOfStudy = fieldOfStudy?.ifBlank { null }
+        )
+        val result = safeApiCall { apiService.register(request) }
+        when (result) {
+            is NetworkResult.Success -> {
+                val authData = result.data.body
+                if (authData != null && !authData.accessToken.isNullOrBlank()) {
+                    tokenManager.saveSession(
+                        authData.accessToken,
+                        authData.accessExpiresAt,
+                        authData.refreshExpiresAt
+                    )
+                    tokenManager.saveUserData(
+                        id = authData.user?.id,
+                        phone = authData.user?.phone ?: phone,
+                        role = authData.user?.role,
+                        fullName = authData.user?.fullName ?: fullName
+                    )
+                    tokenManager.clearRegistrationToken()
+                }
+                emit(NetworkResult.Success(result.data))
+            }
+            is NetworkResult.Error -> emit(result)
+            is NetworkResult.Exception -> emit(result)
+        }
+    }
+
+    override fun logout(): Flow<NetworkResult<Unit>> = flow {
+        val result = safeApiCall { apiService.logout() }
+        when (result) {
+            is NetworkResult.Success -> {
+                // Ignore token clearing here, it should be done in ViewModel or API Client, but we can do it here too
+                emit(NetworkResult.Success(Unit))
+            }
+            is NetworkResult.Error -> emit(result)
+            is NetworkResult.Exception -> emit(result)
         }
     }
 }

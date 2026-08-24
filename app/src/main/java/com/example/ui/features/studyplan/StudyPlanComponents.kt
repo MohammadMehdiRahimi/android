@@ -1,368 +1,987 @@
 package com.example.ui.features.studyplan
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Assessment
-import androidx.compose.material.icons.filled.Assignment
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.ChevronLeft
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.outlined.AccessTime
+import androidx.compose.material.icons.outlined.BookmarkBorder
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.MenuBook
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.PlayCircleOutline
+import androidx.compose.material.icons.outlined.Science
+import androidx.compose.material.icons.outlined.Spa
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import coil.compose.AsyncImage
+import com.example.network.TokenManager
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
-import com.example.data.StudyTaskEntity
-import com.example.ui.core.components.AppBackground
-import com.example.ui.theme.LocalShetabColors
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import com.example.R
+import com.example.network.StudyTaskBookDto
+import com.example.network.StudyTaskChapterDto
+import com.example.network.StudyTaskDto
+import com.example.network.StudyTaskTopicDto
+import com.example.ui.core.components.shimmerEffect
 import com.example.ui.core.toPersianNumber
-import androidx.compose.material.icons.filled.Send
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Chat
-import com.example.ui.screens.generate14DaySchedule
-import com.example.ui.screens.saveScheduleToDatabase
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.School
-import androidx.compose.material.icons.filled.Timeline
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.draw.shadow
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.delay
+import com.example.ui.theme.IranSansFontFamily
 
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.foundation.BorderStroke
+val PlanPurple = Color(0xFF7656F5)
+val PlanPurpleDark = Color(0xFF5236CB)
+val PlanPurpleLight = Color(0xFFEDE9FE)
+val PlanNavy = Color(0xFF18234D)
+val PlanMuted = Color(0xFF7E859E)
+val PlanBackground = Color(0xFFFBFBFD)
+val PlanGreen = Color(0xFF16A34A)
+val PlanGreenLight = Color(0xFFDCFCE7)
+val PlanOrange = Color(0xFFF97316)
+val PlanOrangeLight = Color(0xFFFFEDD5)
+val PlanCardBorder = Color(0xFFF0F2F7)
 
-data class SubjectTheme(
-    val bgPastel: Color,
-    val accentColor: Color,
-    val icon: androidx.compose.ui.graphics.vector.ImageVector,
-    val label: String
+data class SubjectVisualConfig(
+    val title: String,
+    val gradeOrField: String,
+    val icon: ImageVector,
+    val iconTint: Color,
+    val containerBg: Color,
 )
 
-fun getSubjectTheme(subject: String): SubjectTheme {
-    val lower = subject.lowercase()
+fun getSubjectVisualConfig(subjectName: String, bookName: String? = null): SubjectVisualConfig {
+    val text = (subjectName + " " + (bookName ?: "")).lowercase()
     return when {
-        lower.contains("زیست") -> SubjectTheme(
-            bgPastel = Color(0xFFF3E8FF),
-            accentColor = Color(0xFF9333EA),
-            icon = Icons.Outlined.Book,
-            label = "زیست‌شناسی"
+        text.contains("ریاضی") || text.contains("هندسه") || text.contains("حسابان") || text.contains("آمار") -> SubjectVisualConfig(
+            title = "ریاضی",
+            gradeOrField = "رشته تجربی",
+            icon = Icons.Outlined.MenuBook,
+            iconTint = Color(0xFF7656F5),
+            containerBg = Color(0xFFF5F3FF),
         )
-        lower.contains("ریاضی") || lower.contains("حسابان") || lower.contains("هندسه") || lower.contains("آمار") -> SubjectTheme(
-            bgPastel = Color(0xFFDCFCE7),
-            accentColor = Color(0xFF16A34A),
-            icon = Icons.Outlined.EditNote,
-            label = "ریاضی"
-        )
-        lower.contains("زبان") || lower.contains("انگلیسی") -> SubjectTheme(
-            bgPastel = Color(0xFFE0F2FE),
-            accentColor = Color(0xFF0284C7),
-            icon = Icons.Outlined.ChatBubbleOutline,
-            label = "زبان انگلیسی"
-        )
-        lower.contains("فیزیک") -> SubjectTheme(
-            bgPastel = Color(0xFFFEF3C7),
-            accentColor = Color(0xFFD97706),
-            icon = Icons.Outlined.Lightbulb,
-            label = "فیزیک"
-        )
-        lower.contains("شیمی") -> SubjectTheme(
-            bgPastel = Color(0xFFFFEDD5),
-            accentColor = Color(0xFFEA580C),
+        text.contains("فیزیک") -> SubjectVisualConfig(
+            title = "فیزیک",
+            gradeOrField = "رشته تجربی",
             icon = Icons.Outlined.Science,
-            label = "شیمی"
+            iconTint = Color(0xFF2563EB),
+            containerBg = Color(0xFFEFF6FF),
         )
-        lower.contains("ادبیات") || lower.contains("فارسی") -> SubjectTheme(
-            bgPastel = Color(0xFFCCFBF1),
-            accentColor = Color(0xFF0D9488),
-            icon = Icons.Outlined.AutoStories,
-            label = "ادبیات"
+        text.contains("شیمی") -> SubjectVisualConfig(
+            title = "شیمی",
+            gradeOrField = "رشته تجربی",
+            icon = Icons.Outlined.Science,
+            iconTint = Color(0xFFEA580C),
+            containerBg = Color(0xFFFFF7ED),
         )
-        else -> SubjectTheme(
-            bgPastel = Color(0xFFF3E8FF),
-            accentColor = Color(0xFF9333EA),
-            icon = Icons.Outlined.Book,
-            label = subject
+        text.contains("زیست") -> SubjectVisualConfig(
+            title = "زیست‌شناسی",
+            gradeOrField = "رشته تجربی",
+            icon = Icons.Outlined.Spa,
+            iconTint = Color(0xFF16A34A),
+            containerBg = Color(0xFFF0FDF4),
+        )
+        else -> SubjectVisualConfig(
+            title = subjectName.ifBlank { "عمومی" },
+            gradeOrField = "رشته تجربی",
+            icon = Icons.Outlined.MenuBook,
+            iconTint = Color(0xFF7656F5),
+            containerBg = Color(0xFFF5F3FF),
         )
     }
 }
 
 @Composable
-fun blendColor(base: Color, overlay: Color, alpha: Float): Color {
-    return Color(
-        red = base.red + (overlay.red - base.red) * alpha,
-        green = base.green + (overlay.green - base.green) * alpha,
-        blue = base.blue + (overlay.blue - base.blue) * alpha,
-        alpha = 1.0f
-    )
-}
-
-@Composable
-fun TaskCard(
-    task: StudyTaskEntity,
-    colors: com.example.ui.theme.ShetabColorPalette,
-    onPlayClick: () -> Unit,
-    onEditClick: () -> Unit,
-    onToggleComplete: () -> Unit
+fun StudyPlanTopHeader(
+    onNotificationClick: () -> Unit = {},
+    unreadNotification: Boolean = true,
 ) {
-    val theme = getSubjectTheme(task.subject)
+    val context = LocalContext.current
+    val tokenManager = remember { TokenManager(context) }
+    val userAvatarUrl = remember { tokenManager.getProfileImageUrl() }
 
-    Card(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(1.dp, RoundedCornerShape(22.dp), clip = false)
-            .clip(RoundedCornerShape(22.dp))
-            .background(Color.White)
-            .clickable { onEditClick() },
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        shape = RoundedCornerShape(22.dp),
-        border = BorderStroke(1.dp, Color(0xFFF1F5F9))
+            .padding(horizontal = 20.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+        // Right side in RTL: User Avatar with online status
+        Box(
+            modifier = Modifier.size(50.dp),
+            contentAlignment = Alignment.Center,
         ) {
-            // Right Side (Far right in RTL): Rounded Square pastel box with Play button
             Box(
                 modifier = Modifier
-                    .size(52.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(theme.bgPastel)
-                    .clickable { onPlayClick() },
-                contentAlignment = Alignment.Center
+                    .size(46.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFEDE9FE))
+                    .border(1.5.dp, Color.White, CircleShape),
+                contentAlignment = Alignment.Center,
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(theme.accentColor),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.PlayArrow,
-                        contentDescription = "شروع مطالعه (تمرکز)",
-                        tint = Color.White,
+                if (!userAvatarUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = userAvatarUrl,
+                        contentDescription = "آواتار کاربر",
+                        contentScale = ContentScale.Crop,
                         modifier = Modifier
-                            .size(22.dp)
-                            .padding(start = 2.dp)
+                            .fillMaxSize()
+                            .clip(CircleShape),
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Filled.Person,
+                        contentDescription = "آواتار کاربر",
+                        tint = PlanPurple,
+                        modifier = Modifier.size(26.dp),
                     )
                 }
             }
 
+            // Green online badge at bottom corner
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .size(15.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF22C55E))
+                    .border(1.5.dp, Color.White, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Check,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(9.dp),
+                )
+            }
+        }
+
+        // Center: Title and Subtitle
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.weight(1f),
+        ) {
+            Text(
+                text = stringResource(id = R.string.study_plan_title),
+                color = PlanNavy,
+                fontFamily = IranSansFontFamily,
+                fontWeight = FontWeight.Bold,
+                fontSize = 20.sp,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = stringResource(id = R.string.study_plan_subtitle),
+                color = PlanMuted,
+                fontFamily = IranSansFontFamily,
+                fontWeight = FontWeight.Normal,
+                fontSize = 12.sp,
+                textAlign = TextAlign.Center,
+            )
+        }
+
+        // Left side in RTL: Circular Notification Bell Button
+        Box(
+            modifier = Modifier
+                .size(46.dp)
+                .clip(CircleShape)
+                .background(Color.White)
+                .border(1.dp, PlanCardBorder, CircleShape)
+                .clickable { onNotificationClick() }
+                .testTag("notification_button"),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Notifications,
+                contentDescription = "اعلان‌ها",
+                tint = PlanNavy,
+                modifier = Modifier.size(22.dp),
+            )
+
+            if (unreadNotification) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 10.dp, end = 11.dp)
+                        .size(7.dp)
+                        .clip(CircleShape)
+                        .background(PlanPurple),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun StudyPlanSummaryCard(
+    totalDurationMinutes: Int,
+    remainingCount: Int,
+    completedCount: Int,
+    totalCount: Int,
+    progressFraction: Float,
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .shadow(2.dp, RoundedCornerShape(24.dp), spotColor = Color(0x1A000000))
+            .testTag("study_plan_summary_card"),
+        shape = RoundedCornerShape(24.dp),
+        color = Color.White,
+        border = BorderStroke(1.dp, PlanCardBorder),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 18.dp),
+        ) {
+            // 4 Matrix Columns Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                // Column 1 (Rightmost in RTL): Study Duration
+                SummaryStatItem(
+                    icon = Icons.Outlined.AccessTime,
+                    iconTint = PlanPurple,
+                    title = stringResource(id = R.string.study_plan_stat_duration),
+                    value = "${totalDurationMinutes.toPersianNumber()} دقیقه",
+                    modifier = Modifier.weight(1.3f),
+                )
+
+                VerticalSummaryDivider()
+
+                // Column 2: Remaining
+                SummaryStatItem(
+                    icon = Icons.Outlined.AccessTime,
+                    iconTint = PlanOrange,
+                    title = stringResource(id = R.string.study_plan_stat_remaining),
+                    value = remainingCount.toPersianNumber(),
+                    modifier = Modifier.weight(0.9f),
+                )
+
+                VerticalSummaryDivider()
+
+                // Column 3: Completed
+                SummaryStatItem(
+                    icon = Icons.Outlined.CheckCircle,
+                    iconTint = PlanGreen,
+                    title = stringResource(id = R.string.study_plan_stat_completed),
+                    value = completedCount.toPersianNumber(),
+                    modifier = Modifier.weight(0.9f),
+                )
+
+                VerticalSummaryDivider()
+
+                // Column 4: Total Tasks
+                SummaryStatItem(
+                    icon = Icons.Outlined.BookmarkBorder,
+                    iconTint = PlanPurple,
+                    title = stringResource(id = R.string.study_plan_stat_total),
+                    value = totalCount.toPersianNumber(),
+                    modifier = Modifier.weight(1.0f),
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Progress Bar and Label
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    text = "از ${totalCount.toPersianNumber()} تسک انجام شده",
+                    color = PlanMuted,
+                    fontFamily = IranSansFontFamily,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+
+                Spacer(modifier = Modifier.width(10.dp))
+
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(7.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFECEFF7)),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth(progressFraction.coerceIn(0f, 1f))
+                            .clip(CircleShape)
+                            .background(PlanPurple),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SummaryStatItem(
+    icon: ImageVector,
+    iconTint: Color,
+    title: String,
+    value: String,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = iconTint,
+                modifier = Modifier.size(14.dp),
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = title,
+                color = PlanMuted,
+                fontFamily = IranSansFontFamily,
+                fontSize = 10.5.sp,
+                fontWeight = FontWeight.Normal,
+                maxLines = 1,
+            )
+        }
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        Text(
+            text = value,
+            color = PlanNavy,
+            fontFamily = IranSansFontFamily,
+            fontWeight = FontWeight.Bold,
+            fontSize = 15.sp,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
+private fun VerticalSummaryDivider() {
+    Box(
+        modifier = Modifier
+            .height(34.dp)
+            .width(1.dp)
+            .background(Color(0xFFF1F3F9)),
+    )
+}
+
+@Composable
+fun StudyPlanFilterRow(
+    selectedFilter: StudyTaskFilter,
+    onFilterSelected: (StudyTaskFilter) -> Unit,
+) {
+    LazyRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("study_plan_filter_row"),
+        contentPadding = PaddingValues(horizontal = 20.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // "همه"
+        item(key = "filter_all") {
+            FilterChipPill(
+                text = stringResource(id = R.string.study_plan_filter_all),
+                isSelected = selectedFilter == StudyTaskFilter.ALL,
+                onClick = { onFilterSelected(StudyTaskFilter.ALL) },
+                testTag = "filter_all",
+            )
+        }
+
+        // "در حال انجام"
+        item(key = "filter_in_progress") {
+            FilterChipPill(
+                text = stringResource(id = R.string.study_plan_filter_in_progress),
+                icon = Icons.Outlined.PlayCircleOutline,
+                isSelected = selectedFilter == StudyTaskFilter.IN_PROGRESS,
+                onClick = { onFilterSelected(StudyTaskFilter.IN_PROGRESS) },
+                testTag = "filter_in_progress",
+            )
+        }
+
+        // "انجام نشده"
+        item(key = "filter_pending") {
+            FilterChipPill(
+                text = stringResource(id = R.string.study_plan_filter_pending),
+                icon = Icons.Outlined.AccessTime,
+                isSelected = selectedFilter == StudyTaskFilter.PENDING,
+                onClick = { onFilterSelected(StudyTaskFilter.PENDING) },
+                testTag = "filter_pending",
+            )
+        }
+
+        // "انجام شده"
+        item(key = "filter_completed") {
+            FilterChipPill(
+                text = stringResource(id = R.string.study_plan_filter_completed),
+                icon = Icons.Outlined.CheckCircle,
+                iconTint = if (selectedFilter == StudyTaskFilter.COMPLETED) Color.White else PlanGreen,
+                isSelected = selectedFilter == StudyTaskFilter.COMPLETED,
+                onClick = { onFilterSelected(StudyTaskFilter.COMPLETED) },
+                testTag = "filter_completed",
+            )
+        }
+    }
+}
+
+@Composable
+private fun FilterChipPill(
+    text: String,
+    modifier: Modifier = Modifier,
+    icon: ImageVector? = null,
+    iconTint: Color? = null,
+    isSelected: Boolean = false,
+    onClick: () -> Unit,
+    testTag: String,
+) {
+    Surface(
+        modifier = modifier
+            .height(38.dp)
+            .clip(RoundedCornerShape(19.dp))
+            .clickable { onClick() }
+            .testTag(testTag),
+        shape = RoundedCornerShape(19.dp),
+        color = if (isSelected) PlanPurple else Color.White,
+        border = if (isSelected) null else BorderStroke(1.dp, PlanCardBorder),
+        shadowElevation = if (isSelected) 2.dp else 0.dp,
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(horizontal = 14.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+        ) {
+            if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = if (isSelected) Color.White else (iconTint ?: PlanNavy),
+                    modifier = Modifier.size(16.dp),
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+            }
+            Text(
+                text = text,
+                color = if (isSelected) Color.White else PlanNavy,
+                fontFamily = IranSansFontFamily,
+                fontSize = 12.sp,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+@Composable
+fun RemainingTasksSectionHeader(
+    count: Int,
+    onSortClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        // Right: Title + Count Badge
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = stringResource(id = R.string.study_plan_remaining_tasks_title),
+                color = PlanNavy,
+                fontFamily = IranSansFontFamily,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+            )
+
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = PlanPurpleLight,
+            ) {
+                Text(
+                    text = count.toPersianNumber(),
+                    color = PlanPurple,
+                    fontFamily = IranSansFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                )
+            }
+        }
+
+        // Left: Sort dropdown button
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .clickable { onSortClick() }
+                .padding(horizontal = 6.dp, vertical = 4.dp)
+                .testTag("sort_button"),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Default.KeyboardArrowDown,
+                contentDescription = null,
+                tint = PlanMuted,
+                modifier = Modifier.size(18.dp),
+            )
+            Text(
+                text = stringResource(id = R.string.study_plan_sort_button),
+                color = PlanMuted,
+                fontFamily = IranSansFontFamily,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+            )
+        }
+    }
+}
+
+@Composable
+fun CompletedTasksSectionHeader(
+    count: Int,
+    onSeeAllClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        // Right: Title + Green Badge
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = stringResource(id = R.string.study_plan_completed_tasks_title),
+                color = PlanNavy,
+                fontFamily = IranSansFontFamily,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+            )
+
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = PlanGreenLight,
+            ) {
+                Text(
+                    text = count.toPersianNumber(),
+                    color = PlanGreen,
+                    fontFamily = IranSansFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                )
+            }
+        }
+
+        // Left: See all link
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .clickable { onSeeAllClick() }
+                .padding(horizontal = 6.dp, vertical = 4.dp)
+                .testTag("see_all_completed_button"),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                contentDescription = null,
+                tint = PlanMuted,
+                modifier = Modifier.size(16.dp),
+            )
+            Text(
+                text = stringResource(id = R.string.study_plan_see_all),
+                color = PlanMuted,
+                fontFamily = IranSansFontFamily,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+            )
+        }
+    }
+}
+
+@Composable
+fun StudyTaskItemCard(
+    task: StudyTaskDto,
+    isBookmarked: Boolean,
+    onBookmarkToggle: () -> Unit,
+    onStartClick: () -> Unit,
+    onContinueClick: () -> Unit,
+    isBusy: Boolean = false,
+) {
+    val subjectConfig = getSubjectVisualConfig(
+        subjectName = task.book.name,
+        bookName = task.title,
+    )
+
+    val isInProgress = task.isInProgress
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .shadow(2.dp, RoundedCornerShape(22.dp), spotColor = Color(0x14000000))
+            .testTag("task_card_${task.id}"),
+        shape = RoundedCornerShape(22.dp),
+        color = Color.White,
+        border = BorderStroke(1.dp, PlanCardBorder),
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                // Right side in RTL: Subject Icon & Name Container Box
+                SubjectBadgeBox(
+                    config = subjectConfig,
+                    modifier = Modifier.size(width = 68.dp, height = 72.dp),
+                )
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                // Middle Column: Title, Subtitle, Meta Row
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                ) {
+                    Text(
+                        text = task.title,
+                        color = PlanNavy,
+                        fontFamily = IranSansFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.5.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+
+                    Text(
+                        text = "${task.chapter.name}: ${task.topic.name}",
+                        color = PlanMuted,
+                        fontFamily = IranSansFontFamily,
+                        fontSize = 11.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+
+                    Spacer(modifier = Modifier.height(2.dp))
+
+                    // Meta Row: Time, Cycle, Priority Indicator
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        // Duration Text
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(3.dp),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.AccessTime,
+                                contentDescription = null,
+                                tint = PlanMuted,
+                                modifier = Modifier.size(12.dp),
+                            )
+                            val timeText = if (isInProgress) {
+                                "${task.elapsedMinutes.toPersianNumber()} دقیقه از ${task.plannedMinutes.toPersianNumber()} دقیقه"
+                            } else {
+                                "${task.plannedMinutes.toPersianNumber()} دقیقه"
+                            }
+                            Text(
+                                text = timeText,
+                                color = PlanMuted,
+                                fontFamily = IranSansFontFamily,
+                                fontSize = 10.5.sp,
+                            )
+                        }
+
+                        // Cycle Text
+                        val cycleNumber = task.periodCount.coerceAtLeast(1)
+                        Text(
+                            text = "دور ${cycleNumber.toPersianNumber()}/۳",
+                            color = PlanMuted,
+                            fontFamily = IranSansFontFamily,
+                            fontSize = 10.5.sp,
+                        )
+
+                        // Priority Signal Bars
+                        PrioritySignalBars(level = (cycleNumber % 4) + 1)
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Left Column in RTL: Bookmark icon & Action Button
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.height(72.dp),
+                ) {
+                    // Bookmark icon
+                    IconButton(
+                        onClick = onBookmarkToggle,
+                        modifier = Modifier.size(24.dp),
+                    ) {
+                        Icon(
+                            imageVector = if (isBookmarked) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
+                            contentDescription = "نشان کردن",
+                            tint = if (isBookmarked) PlanPurple else Color(0xFF9CA3AF),
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    // Action Button (شروع / ادامه)
+                    if (isInProgress) {
+                        Surface(
+                            modifier = Modifier
+                                .height(32.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable(enabled = !isBusy) { onContinueClick() }
+                                .testTag("continue_button_${task.id}"),
+                            shape = RoundedCornerShape(12.dp),
+                            color = Color.White,
+                            border = BorderStroke(1.2.dp, PlanPurple),
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                Text(
+                                    text = stringResource(id = R.string.study_plan_action_continue),
+                                    color = PlanPurple,
+                                    fontFamily = IranSansFontFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.5.sp,
+                                )
+                                Icon(
+                                    imageVector = Icons.Filled.PlayArrow,
+                                    contentDescription = null,
+                                    tint = PlanPurple,
+                                    modifier = Modifier.size(15.dp),
+                                )
+                            }
+                        }
+                    } else {
+                        Surface(
+                            modifier = Modifier
+                                .height(32.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable(enabled = !isBusy) { onStartClick() }
+                                .testTag("start_button_${task.id}"),
+                            shape = RoundedCornerShape(12.dp),
+                            color = PlanPurple,
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                Text(
+                                    text = stringResource(id = R.string.study_plan_action_start),
+                                    color = Color.White,
+                                    fontFamily = IranSansFontFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.5.sp,
+                                )
+                                Icon(
+                                    imageVector = Icons.Filled.PlayArrow,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(15.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Bottom Progress Line if In Progress
+            if (isInProgress) {
+                val fraction = if (task.plannedMinutes > 0) {
+                    (task.elapsedMinutes.toFloat() / task.plannedMinutes.toFloat()).coerceIn(0.1f, 1f)
+                } else 0.5f
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 2.dp)
+                        .height(3.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFECEFF7)),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth(fraction)
+                            .clip(CircleShape)
+                            .background(PlanPurple),
+                    )
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun CompletedTaskItemCard(
+    task: StudyTaskDto,
+) {
+    val subjectConfig = getSubjectVisualConfig(
+        subjectName = task.book.name,
+        bookName = task.title,
+    )
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .shadow(1.dp, RoundedCornerShape(22.dp), spotColor = Color(0x0D000000))
+            .testTag("completed_task_card_${task.id}"),
+        shape = RoundedCornerShape(22.dp),
+        color = Color.White,
+        border = BorderStroke(1.dp, PlanCardBorder),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // Right: Subject Badge
+            SubjectBadgeBox(
+                config = subjectConfig,
+                modifier = Modifier.size(width = 68.dp, height = 72.dp),
+            )
+
             Spacer(modifier = Modifier.width(12.dp))
 
-            // Center Column: Title, Subject Tag, Details Row (Grade & Duration)
+            // Middle: Title, Chapter, Duration
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                verticalArrangement = Arrangement.spacedBy(3.dp),
             ) {
                 Text(
                     text = task.title,
-                    color = Color(0xFF1E293B),
-                    fontWeight = FontWeight.ExtraBold,
-                    fontSize = 14.sp,
+                    color = PlanNavy,
+                    fontFamily = IranSansFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.5.sp,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
                 )
 
-                // Subject Pill Tag
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = theme.bgPastel
-                ) {
-                    Text(
-                        text = task.subject,
-                        color = theme.accentColor,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                    )
-                }
+                Text(
+                    text = "${task.chapter.name}: ${task.topic.name}",
+                    color = PlanMuted,
+                    fontFamily = IranSansFontFamily,
+                    fontSize = 11.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
 
-                // Details Row: Grade (دوازدهم) • Duration (۴۵ دقیقه)
+                Spacer(modifier = Modifier.height(2.dp))
+
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    horizontalArrangement = Arrangement.spacedBy(3.dp),
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.Layers,
+                        imageVector = Icons.Outlined.AccessTime,
                         contentDescription = null,
-                        tint = Color(0xFF94A3B8),
-                        modifier = Modifier.size(12.dp)
+                        tint = PlanMuted,
+                        modifier = Modifier.size(12.dp),
                     )
                     Text(
-                        text = "دوازدهم",
-                        fontSize = 11.sp,
-                        color = Color(0xFF64748B),
-                        fontWeight = FontWeight.Medium
-                    )
-                    Text(
-                        text = "•",
-                        fontSize = 11.sp,
-                        color = Color(0xFF94A3B8),
-                        modifier = Modifier.padding(horizontal = 2.dp)
-                    )
-                    Icon(
-                        imageVector = Icons.Outlined.Schedule,
-                        contentDescription = null,
-                        tint = Color(0xFF94A3B8),
-                        modifier = Modifier.size(12.dp)
-                    )
-                    Text(
-                        text = task.timeLimit.toPersianNumber(),
-                        fontSize = 11.sp,
-                        color = Color(0xFF64748B),
-                        fontWeight = FontWeight.Medium
+                        text = "${task.plannedMinutes.toPersianNumber()} دقیقه",
+                        color = PlanMuted,
+                        fontFamily = IranSansFontFamily,
+                        fontSize = 10.5.sp,
                     )
                 }
             }
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            // Left Side (Far left in RTL): Options ⋮ and Toggle Checkbox Circle
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.height(56.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.MoreVert,
-                    contentDescription = "گزینه‌ها",
-                    tint = Color(0xFFCBD5E1),
-                    modifier = Modifier
-                        .size(18.dp)
-                        .clickable { onEditClick() }
-                )
-
-                IconButton(
-                    onClick = onToggleComplete,
-                    modifier = Modifier.size(24.dp)
-                ) {
-                    if (task.isCompleted) {
-                        Box(
-                            modifier = Modifier
-                                .size(22.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFF10B981)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = "تکمیل شده",
-                                tint = Color.White,
-                                modifier = Modifier.size(14.dp)
-                            )
-                        }
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .size(22.dp)
-                                .clip(CircleShape)
-                                .border(2.dp, Color(0xFF3B82F6), CircleShape)
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun StudyPlanDateSelectorCard(
-    currentDate: String,
-    onPreviousDay: () -> Unit,
-    onNextDay: () -> Unit,
-    onCalendarClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(1.dp, RoundedCornerShape(20.dp), clip = false)
-            .border(1.dp, Color(0xFFF1F5F9), RoundedCornerShape(20.dp))
-            .clickable { onCalendarClick() },
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            IconButton(
-                onClick = onPreviousDay,
-                modifier = Modifier.size(28.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ChevronRight,
-                    contentDescription = "روز قبل",
-                    tint = Color(0xFF8B5CF6),
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-
+            // Left: Green Checkmark Badge "انجام شد"
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Icon(
-                    imageVector = Icons.Outlined.CalendarToday,
-                    contentDescription = null,
-                    tint = Color(0xFF8B5CF6),
-                    modifier = Modifier.size(20.dp)
-                )
                 Text(
-                    text = currentDate.toPersianNumber(),
-                    color = Color(0xFF8B5CF6),
-                    fontWeight = FontWeight.Black,
-                    fontSize = 15.sp
+                    text = stringResource(id = R.string.study_plan_action_done),
+                    color = PlanGreen,
+                    fontFamily = IranSansFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
                 )
-            }
-
-            IconButton(
-                onClick = onNextDay,
-                modifier = Modifier.size(28.dp)
-            ) {
                 Icon(
-                    imageVector = Icons.Default.ChevronLeft,
-                    contentDescription = "روز بعد",
-                    tint = Color(0xFF8B5CF6),
-                    modifier = Modifier.size(22.dp)
+                    imageVector = Icons.Filled.CheckCircle,
+                    contentDescription = null,
+                    tint = PlanGreen,
+                    modifier = Modifier.size(20.dp),
                 )
             }
         }
@@ -370,606 +989,385 @@ fun StudyPlanDateSelectorCard(
 }
 
 @Composable
-fun StudyPlanTodayStatsCard(
-    completedCount: Int,
-    totalCount: Int,
-    todayScore: Int,
-    progressPercent: Int
+private fun SubjectBadgeBox(
+    config: SubjectVisualConfig,
+    modifier: Modifier = Modifier,
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(1.dp, RoundedCornerShape(24.dp), clip = false)
-            .border(1.dp, Color(0xFFF1F5F9), RoundedCornerShape(24.dp)),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(18.dp))
+            .background(config.containerBg),
+        contentAlignment = Alignment.Center,
     ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.padding(4.dp),
+        ) {
+            Icon(
+                imageVector = config.icon,
+                contentDescription = null,
+                tint = config.iconTint,
+                modifier = Modifier.size(22.dp),
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = config.title,
+                color = config.iconTint,
+                fontFamily = IranSansFontFamily,
+                fontWeight = FontWeight.Bold,
+                fontSize = 11.5.sp,
+                maxLines = 1,
+            )
+            Text(
+                text = config.gradeOrField,
+                color = PlanMuted,
+                fontFamily = IranSansFontFamily,
+                fontSize = 8.5.sp,
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+@Composable
+private fun PrioritySignalBars(level: Int) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        verticalAlignment = Alignment.Bottom,
+    ) {
+        for (i in 1..4) {
+            val isActive = i <= level
+            val height = (5 + i * 2).dp
+            val barColor = if (isActive) {
+                if (level >= 4) PlanGreen else PlanOrange
+            } else {
+                Color(0xFFE5E7EB)
+            }
+            Box(
+                modifier = Modifier
+                    .width(3.dp)
+                    .height(height)
+                    .clip(RoundedCornerShape(1.5.dp))
+                    .background(barColor),
+            )
+        }
+    }
+}
+
+@Composable
+fun AddTaskFloatingActionButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier
+            .size(56.dp)
+            .shadow(10.dp, CircleShape, spotColor = Color(0x667656F5))
+            .clip(CircleShape)
+            .clickable { onClick() }
+            .testTag("add_study_task_fab"),
+        shape = CircleShape,
+        color = PlanPurple,
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Add,
+                contentDescription = stringResource(id = R.string.study_plan_add_task),
+                tint = Color.White,
+                modifier = Modifier.size(28.dp),
+            )
+        }
+    }
+}
+
+@Composable
+fun StudyPlanSkeletonLoading() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        // Summary Skeleton
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .height(130.dp)
+                .shimmerEffect(RoundedCornerShape(24.dp)),
+        )
+
+        // Filter Pills Skeleton
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+                .padding(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            // 1. Far Right in RTL: امتیاز کل امروز
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Text(
-                    text = "امتیاز کل امروز",
-                    fontSize = 9.5.sp,
-                    color = Color(0xFF64748B),
-                    fontWeight = FontWeight.Bold
+            repeat(4) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(38.dp)
+                        .shimmerEffect(RoundedCornerShape(19.dp)),
                 )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = todayScore.toString().toPersianNumber(),
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Black,
-                        color = Color(0xFF1E1B4B)
-                    )
-                    Box(
-                        modifier = Modifier
-                            .size(24.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0xFFFEF3C7)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("⭐", fontSize = 12.sp)
-                    }
-                }
             }
+        }
 
-            // 2. انجام شده
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Text(
-                    text = "انجام شده",
-                    fontSize = 9.5.sp,
-                    color = Color(0xFF64748B),
-                    fontWeight = FontWeight.Bold
-                )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = completedCount.toString().toPersianNumber(),
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Black,
-                        color = Color(0xFF16A34A)
-                    )
-                    Box(
-                        modifier = Modifier
-                            .size(24.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFFDCFCE7)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = null,
-                            tint = Color(0xFF16A34A),
-                            modifier = Modifier.size(14.dp)
-                        )
-                    }
-                }
-            }
-
-            // 3. تعداد کل وظایف
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Text(
-                    text = "تعداد کل وظایف",
-                    fontSize = 9.5.sp,
-                    color = Color(0xFF64748B),
-                    fontWeight = FontWeight.Bold
-                )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = totalCount.toString().toPersianNumber(),
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Black,
-                        color = Color(0xFF9333EA)
-                    )
-                    Box(
-                        modifier = Modifier
-                            .size(24.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0xFFF3E8FF)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.CalendarToday,
-                            contentDescription = null,
-                            tint = Color(0xFF9333EA),
-                            modifier = Modifier.size(13.dp)
-                        )
-                    }
-                }
-            }
-
-            // 4. Far Left in RTL: پیشرفت روزانه
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Text(
-                    text = "پیشرفت روزانه",
-                    fontSize = 9.5.sp,
-                    color = Color(0xFF64748B),
-                    fontWeight = FontWeight.Bold
-                )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Text(
-                        text = "$progressPercent٪".toPersianNumber(),
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Black,
-                        color = Color(0xFF8B5CF6)
-                    )
-                    // Progress bar track & fill
-                    Box(
-                        modifier = Modifier
-                            .width(60.dp)
-                            .height(8.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFFF1F5F9))
-                    ) {
-                        val progressFraction = (progressPercent / 100f).coerceIn(0f, 1f)
-                        if (progressFraction > 0f) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxHeight()
-                                    .fillMaxWidth(progressFraction)
-                                    .clip(CircleShape)
-                                    .background(
-                                        Brush.horizontalGradient(
-                                            listOf(Color(0xFF8B5CF6), Color(0xFFA855F7))
-                                        )
-                                    )
-                            )
-                        }
-                    }
-                }
-            }
+        // Task Cards Skeleton
+        repeat(3) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .height(96.dp)
+                    .shimmerEffect(RoundedCornerShape(22.dp)),
+            )
         }
     }
 }
+
 @Composable
-fun PersianCalendarDialog(
-    colors: com.example.ui.theme.ShetabColorPalette,
-    currentDate: String,
-    onDismiss: () -> Unit,
-    onDateSelected: (Int, String) -> Unit
+fun StudyPlanEmptyState(
+    onAddTaskClick: () -> Unit,
 ) {
-    val months = listOf("فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند")
-    var currentMonthIndex by remember { mutableIntStateOf(5) } // Default to شهریور
-    var currentYear by remember { mutableIntStateOf(1403) }
-
-    val daysInMonth = if (currentMonthIndex < 6) 31 else if (currentMonthIndex < 11) 30 else 29
-    val startDayOfWeek = (currentMonthIndex * 2 + currentYear) % 7 // Mock offset
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        text = {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = {
-                        if (currentMonthIndex == 0) {
-                            currentMonthIndex = 11
-                            currentYear--
-                        } else {
-                            currentMonthIndex--
-                        }
-                    }) {
-                        Icon(Icons.Default.ChevronRight, contentDescription = "Previous Month", tint = colors.accentMain)
-                    }
-                    Text("${months[currentMonthIndex]} ${currentYear.toString().toPersianNumber()}", color = colors.primaryText, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                    IconButton(onClick = {
-                        if (currentMonthIndex == 11) {
-                            currentMonthIndex = 0
-                            currentYear++
-                        } else {
-                            currentMonthIndex++
-                        }
-                    }) {
-                        Icon(Icons.Default.ChevronLeft, contentDescription = "Next Month", tint = colors.accentMain)
-                    }
-                }
-                
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    listOf("ش", "ی", "د", "س", "چ", "پ", "ج").forEach {
-                        Text(it, color = colors.secondaryText, fontSize = 12.sp, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-                    }
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(7),
-                    modifier = Modifier.fillMaxWidth().height(250.dp)
-                ) {
-                    items(startDayOfWeek) {
-                        Spacer(modifier = Modifier.aspectRatio(1f))
-                    }
-                    items(daysInMonth) { index ->
-                        val day = index + 1
-                        val isSelected = currentDate.contains("$day") && currentDate.contains(months[currentMonthIndex]) || (currentDate.contains("امروز") && day == 4 && currentMonthIndex == 5)
-                        Box(
-                            modifier = Modifier
-                                .aspectRatio(1f)
-                                .padding(2.dp)
-                                .clip(CircleShape)
-                                .background(if (isSelected) colors.accentMain else Color.Transparent)
-                                .clickable { onDateSelected(day, "${months[currentMonthIndex]} $currentYear") },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "$day".toPersianNumber(),
-                                color = if (isSelected) Color.White else colors.primaryText,
-                                fontSize = 14.sp
-                            )
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {},
-        containerColor = colors.bgMain,
-        shape = RoundedCornerShape(24.dp)
-    )
-}
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun TaskDialog(
-    colors: com.example.ui.theme.ShetabColorPalette,
-    initialTask: StudyTaskEntity? = null,
-    onDismiss: () -> Unit,
-    onSave: (String, Int, Int, Int, String) -> Unit,
-    onDelete: (() -> Unit)? = null
-) {
-    var title by remember { mutableStateOf(initialTask?.title ?: "") }
-    var subject by remember { mutableStateOf(initialTask?.subject ?: "زیست شناسی") }
-    var cyclesStr by remember { mutableStateOf(initialTask?.totalCycles?.toString() ?: "1") }
-    
-    var showCustomTime by remember { mutableStateOf(false) }
-    var focusDurationStr by remember { mutableStateOf(initialTask?.focusDuration?.toString() ?: "60") }
-    var restDurationStr by remember { mutableStateOf(initialTask?.restDuration?.toString() ?: "15") }
-
-    val subjects = listOf("زیست شناسی", "فیزیک", "شیمی", "ریاضیات", "زبان انگلیسی", "عربی", "ادبیات")
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = Color.White,
-        scrimColor = Color.Black.copy(alpha = 0.4f),
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-        dragHandle = {
-            Box(
-                modifier = Modifier
-                    .padding(vertical = 12.dp)
-                    .width(40.dp)
-                    .height(4.dp)
-                    .background(Color(0xFFCBD5E1), CircleShape)
-            )
-        }
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 24.dp),
+        shape = RoundedCornerShape(24.dp),
+        color = Color.White,
+        border = BorderStroke(1.dp, PlanCardBorder),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 36.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
         ) {
-            // Header Row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(CircleShape)
+                    .background(PlanPurpleLight),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.MenuBook,
+                    contentDescription = null,
+                    tint = PlanPurple,
+                    modifier = Modifier.size(32.dp),
+                )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Text(
+                text = stringResource(id = R.string.study_plan_empty_title),
+                color = PlanNavy,
+                fontFamily = IranSansFontFamily,
+                fontWeight = FontWeight.Bold,
+                fontSize = 15.sp,
+                textAlign = TextAlign.Center,
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                text = stringResource(id = R.string.study_plan_empty_subtitle),
+                color = PlanMuted,
+                fontFamily = IranSansFontFamily,
+                fontSize = 12.sp,
+                textAlign = TextAlign.Center,
+            )
+
+            Spacer(modifier = Modifier.height(18.dp))
+
+            Button(
+                onClick = onAddTaskClick,
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = PlanPurple),
+                modifier = Modifier.testTag("empty_state_add_task_button"),
+            ) {
+                Icon(Icons.Filled.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = stringResource(id = R.string.study_plan_add_task),
+                    color = Color.White,
+                    fontFamily = IranSansFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun CreateTaskDialog(
+    books: List<StudyTaskBookDto>,
+    isCreating: Boolean,
+    onDismiss: () -> Unit,
+    onConfirm: (topicId: String, periodCount: Int, minutesPerPeriod: Int) -> Unit,
+) {
+    var selectedBookIndex by remember { mutableIntStateOf(0) }
+    var selectedChapterIndex by remember { mutableIntStateOf(0) }
+    var selectedTopicIndex by remember { mutableIntStateOf(0) }
+    var periodCount by remember { mutableIntStateOf(1) }
+    var minutesPerPeriod by remember { mutableIntStateOf(45) }
+
+    val safeBooks = books.ifEmpty { emptyList() }
+    val currentBook = safeBooks.getOrNull(selectedBookIndex)
+    val chapters = currentBook?.chapters ?: emptyList()
+    val currentChapter = chapters.getOrNull(selectedChapterIndex)
+    val topics = currentChapter?.topics ?: emptyList()
+    val currentTopic = topics.getOrNull(selectedTopicIndex)
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .clip(RoundedCornerShape(26.dp)),
+            shape = RoundedCornerShape(26.dp),
+            color = Color.White,
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(38.dp)
-                            .background(Color(0xFF8B5CF6).copy(alpha = 0.12f), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = null,
-                            tint = Color(0xFF8B5CF6),
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                    Text(
-                        text = if (initialTask == null) "افزودن برنامه درسی جدید" else "ویرایش برنامه درسی",
-                        color = Color(0xFF1E1B4B),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 17.sp
-                    )
-                }
-
-                if (onDelete != null) {
-                    IconButton(
-                        onClick = { onDelete(); onDismiss() },
-                        modifier = Modifier.background(Color(0xFFFEE2E2), CircleShape)
-                    ) {
-                        Icon(Icons.Default.Delete, contentDescription = "حذف", tint = Color(0xFFEF4444), modifier = Modifier.size(18.dp))
-                    }
-                }
-            }
-
-            HorizontalDivider(color = Color(0xFFF1F5F9))
-
-            // Task Title Input
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(
-                    text = "عنوان درس یا مبحث",
-                    color = Color(0xFF1E1B4B),
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it },
-                    placeholder = { Text("مثلاً: مطالعه فصل اول زیست شناسی", color = Color(0xFF94A3B8), fontSize = 13.sp) },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = Color(0xFFF8FAFC),
-                        unfocusedContainerColor = Color(0xFFF8FAFC),
-                        focusedTextColor = Color(0xFF1E1B4B),
-                        unfocusedTextColor = Color(0xFF1E1B4B),
-                        focusedBorderColor = Color(0xFF8B5CF6),
-                        unfocusedBorderColor = Color(0xFFE2E8F0)
-                    ),
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    singleLine = true
-                )
-            }
-
-            // Subject Chips Selection
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = "انتخاب درس مربوطه",
-                    color = Color(0xFF1E1B4B),
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                androidx.compose.foundation.lazy.LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(vertical = 2.dp)
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    items(subjects) { s ->
-                        val isSelected = subject == s
-                        val subjectColor = getSubjectTheme(s).accentColor
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(14.dp))
-                                .background(if (isSelected) subjectColor else Color(0xFFF8FAFC))
-                                .border(
-                                    width = 1.dp,
-                                    color = if (isSelected) subjectColor else Color(0xFFE2E8F0),
-                                    shape = RoundedCornerShape(14.dp)
-                                )
-                                .clickable { subject = s }
-                                .padding(horizontal = 14.dp, vertical = 8.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    Text(
+                        text = "افزودن تسک مطالعه جدید",
+                        color = PlanNavy,
+                        fontFamily = IranSansFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                    )
+                    IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
+                        Icon(Icons.Filled.Close, contentDescription = "بستن", tint = PlanMuted)
+                    }
+                }
+
+                if (safeBooks.isEmpty()) {
+                    Text(
+                        text = "کتابی برای رشته شما تعریف نشده است.",
+                        color = PlanMuted,
+                        fontFamily = IranSansFontFamily,
+                        fontSize = 12.sp,
+                    )
+                } else {
+                    // Book selector
+                    Text(text = "انتخاب کتاب:", color = PlanNavy, fontFamily = IranSansFontFamily, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        safeBooks.take(4).forEachIndexed { index, book ->
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable {
+                                        selectedBookIndex = index
+                                        selectedChapterIndex = 0
+                                        selectedTopicIndex = 0
+                                    },
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (selectedBookIndex == index) PlanPurpleLight else Color(0xFFF8F9FD),
+                                border = if (selectedBookIndex == index) BorderStroke(1.dp, PlanPurple) else null,
                             ) {
-                                if (isSelected) {
-                                    Icon(
-                                        imageVector = Icons.Default.CheckCircle,
-                                        contentDescription = null,
-                                        tint = Color.White,
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                } else {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(8.dp)
-                                            .background(subjectColor, CircleShape)
-                                    )
-                                }
                                 Text(
-                                    text = s,
-                                    color = if (isSelected) Color.White else Color(0xFF334155),
-                                    fontSize = 13.sp,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                                    text = book.name,
+                                    color = if (selectedBookIndex == index) PlanPurple else PlanNavy,
+                                    fontFamily = IranSansFontFamily,
+                                    fontWeight = if (selectedBookIndex == index) FontWeight.Bold else FontWeight.Normal,
+                                    fontSize = 12.sp,
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                                 )
                             }
                         }
                     }
-                }
-            }
 
-            // Study Cycles
-            val cycles = cyclesStr.toIntOrNull() ?: 1
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0))
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text("تعداد دوره‌های مطالعه", color = Color(0xFF1E1B4B), fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text("هر دوره پومودورو شامل مطالعه و استراحت است", color = Color(0xFF64748B), fontSize = 11.sp)
-                    }
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFF8B5CF6).copy(alpha = 0.12f))
-                                .clickable { if (cycles > 1) cyclesStr = (cycles - 1).toString() },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("-", color = Color(0xFF8B5CF6), fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                        }
-
+                    // Chapter / Topic
+                    if (topics.isNotEmpty()) {
+                        Text(text = "مبحث:", color = PlanNavy, fontFamily = IranSansFontFamily, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         Text(
-                            text = cycles.toString().toPersianNumber(),
-                            color = Color(0xFF1E1B4B),
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Black
+                            text = "${currentChapter?.name ?: ""} - ${currentTopic?.name ?: ""}",
+                            color = PlanPurple,
+                            fontFamily = IranSansFontFamily,
+                            fontSize = 12.sp,
                         )
-
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFF8B5CF6))
-                                .clickable { if (cycles < 30) cyclesStr = (cycles + 1).toString() },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("+", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                        }
                     }
-                }
-            }
 
-            // Time Customization Switch
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0))
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp)
-                ) {
+                    // Duration selector
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Column {
-                            Text("زمان‌بندی دوره‌ها", color = Color(0xFF1E1B4B), fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = if (showCustomTime) "تنظیم سفارشی زمان" else "پیش‌فرض: ۶۰ دقیقه مطالعه، ۱۵ دقیقه استراحت",
-                                color = if (showCustomTime) Color(0xFF8B5CF6) else Color(0xFF64748B),
-                                fontSize = 11.sp
-                            )
-                        }
-                        Switch(
-                            checked = showCustomTime,
-                            onCheckedChange = { showCustomTime = it },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color.White,
-                                checkedTrackColor = Color(0xFF8B5CF6),
-                                uncheckedThumbColor = Color(0xFF94A3B8),
-                                uncheckedTrackColor = Color(0xFFE2E8F0)
-                            )
-                        )
-                    }
-
-                    if (showCustomTime) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        HorizontalDivider(color = Color(0xFFE2E8F0))
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        val focus = focusDurationStr.toIntOrNull() ?: 60
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text("مدت مطالعه هر دوره:", color = Color(0xFF334155), fontSize = 12.sp)
-                                Text("${focus.toString().toPersianNumber()} دقیقه", color = Color(0xFF8B5CF6), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Text(text = "مدت زمان (دقیقه):", color = PlanNavy, fontFamily = IranSansFontFamily, fontSize = 12.sp)
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            listOf(30, 45, 60, 90).forEach { mins ->
+                                Surface(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .clickable { minutesPerPeriod = mins },
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = if (minutesPerPeriod == mins) PlanPurple else Color(0xFFF0F2F7),
+                                ) {
+                                    Text(
+                                        text = mins.toPersianNumber(),
+                                        color = if (minutesPerPeriod == mins) Color.White else PlanNavy,
+                                        fontFamily = IranSansFontFamily,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    )
+                                }
                             }
-                            Slider(
-                                value = focus.toFloat(),
-                                onValueChange = { focusDurationStr = (Math.round(it / 5.0) * 5).toInt().toString() },
-                                valueRange = 10f..120f,
-                                colors = SliderDefaults.colors(
-                                    thumbColor = Color(0xFF8B5CF6),
-                                    activeTrackColor = Color(0xFF8B5CF6),
-                                    inactiveTrackColor = Color(0xFF8B5CF6).copy(alpha = 0.2f)
-                                )
-                            )
-                        }
-
-                        val rest = restDurationStr.toIntOrNull() ?: 15
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text("مدت استراحت:", color = Color(0xFF334155), fontSize = 12.sp)
-                                Text("${rest.toString().toPersianNumber()} دقیقه", color = Color(0xFF8B5CF6), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                            }
-                            Slider(
-                                value = rest.toFloat(),
-                                onValueChange = { restDurationStr = (Math.round(it / 5.0) * 5).toInt().toString() },
-                                valueRange = 5f..60f,
-                                colors = SliderDefaults.colors(
-                                    thumbColor = Color(0xFF8B5CF6),
-                                    activeTrackColor = Color(0xFF8B5CF6),
-                                    inactiveTrackColor = Color(0xFF8B5CF6).copy(alpha = 0.2f)
-                                )
-                            )
                         }
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
-            // Submit Button
-            Button(
-                onClick = {
-                    val cycles = cyclesStr.toIntOrNull() ?: 1
-                    val focus = focusDurationStr.toIntOrNull() ?: 60
-                    val rest = restDurationStr.toIntOrNull() ?: 15
-                    if (title.isNotBlank()) {
-                        onSave(title, cycles, focus, rest, subject)
-                        onDismiss()
+                Button(
+                    onClick = {
+                        val topicId = currentTopic?.id ?: ""
+                        if (topicId.isNotBlank()) {
+                            onConfirm(topicId, periodCount, minutesPerPeriod)
+                        }
+                    },
+                    enabled = currentTopic != null && !isCreating,
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = PlanPurple),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("confirm_create_task_button"),
+                ) {
+                    if (isCreating) {
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
+                    } else {
+                        Text(
+                            text = "ثبت و افزودن به برنامه",
+                            color = Color.White,
+                            fontFamily = IranSansFontFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                        )
                     }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8B5CF6)),
-                shape = RoundedCornerShape(16.dp),
-                elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
-            ) {
-                Text(
-                    text = if (initialTask == null) "ثبت و ذخیره برنامه" else "ویرایش و به‌روزرسانی",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp
-                )
+                }
             }
         }
     }

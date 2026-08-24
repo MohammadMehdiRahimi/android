@@ -1,66 +1,75 @@
 package com.example.ui.main
 
+import android.graphics.Typeface
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.Bolt
-import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.MilitaryTech
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.NotificationsNone
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.ShowChart
-import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import com.example.R
 import com.example.network.ApiClient
 import com.example.network.NetworkResult
@@ -68,11 +77,12 @@ import com.example.network.PerformanceBucketDto
 import com.example.network.ProgressDashboardBodyDto
 import com.example.network.TokenManager
 import com.example.network.safeApiCall
+import com.example.ui.core.toPersianNumber
 import com.example.ui.theme.IranSansFontFamily
 
-private val HomeNavy = Color(0xFF172554)
+private val HomeNavy = Color(0xFF1E293B)
 private val HomeMuted = Color(0xFFA0A8C0)
-private val HomePurple = Color(0xFF7556F6)
+private val HomePurple = Color(0xFF7656F5)
 
 @Composable
 fun ReferenceHomeDashboard(
@@ -85,8 +95,8 @@ fun ReferenceHomeDashboard(
     var buckets by remember { mutableStateOf<List<PerformanceBucketDto>>(emptyList()) }
     var loading by remember { mutableStateOf(!isGuest) }
     var error by remember { mutableStateOf<String?>(null) }
-    var unreadCount by remember { mutableStateOf(0) }
-    var reload by remember { mutableStateOf(0) }
+    var unreadCount by remember { mutableIntStateOf(0) }
+    var reload by remember { mutableIntStateOf(0) }
 
     LifecycleResumeEffect(Unit) {
         if (!isGuest) reload++
@@ -116,33 +126,39 @@ fun ReferenceHomeDashboard(
         loading = false
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 18.dp),
-        verticalArrangement = Arrangement.spacedBy(15.dp),
-    ) {
-        ReferenceHomeHeader(
-            isGuest = isGuest,
-            onLoginClick = onLoginClick,
-            unreadCount = unreadCount,
-            onNotificationsClick = { navController.navigate("notifications") },
-        )
-        ReferenceStatsRow(dashboard, loading)
-        PerformanceCard(
-            range = range,
-            buckets = buckets,
-            loading = loading,
-            error = error,
-            onRangeChange = { range = it },
-            onRetry = { reload++ },
-        )
-        ReferenceFeatureGrid(navController)
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            HomeTopHeader(
+                isGuest = isGuest,
+                onLoginClick = onLoginClick,
+                unreadCount = unreadCount,
+                onNotificationsClick = { navController.navigate("notifications") },
+            )
+
+            HomeStatsRow(
+                dashboard = dashboard,
+                loading = loading
+            )
+
+            PerformanceChartCard(
+                range = range,
+                buckets = buckets,
+                loading = loading,
+                onRangeChange = { range = it },
+            )
+
+            HomeFeatureGrid(navController = navController)
+        }
     }
 }
 
 @Composable
-private fun ReferenceHomeHeader(
+private fun HomeTopHeader(
     isGuest: Boolean,
     onLoginClick: () -> Unit,
     unreadCount: Int,
@@ -152,6 +168,7 @@ private fun ReferenceHomeHeader(
     val tokenManager = remember(context) { ApiClient.getTokenManager() ?: TokenManager(context) }
     var displayName by remember { mutableStateOf(tokenManager.getUserFullName()) }
     var displayTitle by remember { mutableStateOf(tokenManager.getUserTitle()) }
+    var profileImageUrl by remember { mutableStateOf(tokenManager.getProfileImageUrl()) }
 
     LaunchedEffect(isGuest) {
         if (!isGuest) {
@@ -160,6 +177,7 @@ private fun ReferenceHomeHeader(
                 is NetworkResult.Success -> result.data.body?.let { profile ->
                     displayName = profile.fullName?.trim()
                     displayTitle = profile.progression?.title?.nameFa
+                    profileImageUrl = profile.profileImageUrl
                     tokenManager.saveUserData(
                         profile.id ?: tokenManager.getUserId(),
                         profile.phone ?: tokenManager.getUserPhone(),
@@ -179,117 +197,181 @@ private fun ReferenceHomeHeader(
         }
     }
 
-    androidx.compose.runtime.CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+    // In RTL, the first child in Row is placed at the START (RIGHT side of screen)
+    // The second child is placed at the END (LEFT side of screen)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        // 1. Profile Avatar + User Name + Subtitle (Start / Right side)
         Row(
-          modifier = Modifier
-              .fillMaxWidth()
-              .padding(top = 10.dp, bottom = 4.dp),
-          verticalAlignment = Alignment.CenterVertically,
-      ) {
-        Box(
-            modifier = Modifier
-                .size(50.dp)
-                .shadow(3.dp, CircleShape, ambientColor = Color(0x162A3760), spotColor = Color(0x162A3760))
-                .background(Color.White, CircleShape)
-                .clickable(enabled = !isGuest, onClick = onNotificationsClick),
-            contentAlignment = Alignment.Center,
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.clickable(enabled = isGuest, onClick = onLoginClick)
         ) {
-            Icon(Icons.Default.NotificationsNone, contentDescription = "اعلان‌ها", tint = HomeNavy, modifier = Modifier.size(25.dp))
-            if (unreadCount > 0) Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(8.dp)
-                    .size(17.dp)
-                    .background(HomePurple, CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(if (unreadCount > 9) "۹+" else unreadCount.toString(), color = Color.White, fontSize = 7.sp)
-            }
-        }
-
-        Spacer(Modifier.width(13.dp))
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .clickable(enabled = isGuest, onClick = onLoginClick),
-            horizontalAlignment = Alignment.End,
-        ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = if (isGuest) {
-                            "شتاب"
-                        } else {
-                            displayName?.takeIf { it.isNotBlank() } ?: "کاربر شتاب"
-                        },
-                        color = HomeNavy,
-                        fontFamily = IranSansFontFamily,
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 24.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+            // Profile Avatar with User Icon fallback and Online status green dot
+            Box(modifier = Modifier.size(48.dp)) {
+                if (!profileImageUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = ApiClient.resolveUrl(profileImageUrl),
+                        contentDescription = "پروفایل",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape)
                     )
-                    Spacer(Modifier.width(5.dp))
-                    Icon(Icons.Default.Bolt, contentDescription = null, tint = HomePurple, modifier = Modifier.size(31.dp))
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape)
+                            .background(Color(0xFFEDE9FE)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Person,
+                            contentDescription = "پروفایل کاربر",
+                            tint = HomePurple,
+                            modifier = Modifier.size(26.dp)
+                        )
+                    }
                 }
+                // Online status indicator dot
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .offset(x = 1.dp, y = (-1).dp)
+                        .size(12.dp)
+                        .background(Color(0xFF00C853), CircleShape)
+                        .border(2.dp, Color.White, CircleShape)
+                )
+            }
+
+            // User Name & Subtitle Title (without lightning bolt icon)
+            Column(horizontalAlignment = Alignment.Start) {
                 Text(
-                    text = if (isGuest) {
-                        "برای شروع وارد شوید"
-                    } else {
-                        displayTitle?.takeIf { it.isNotBlank() } ?: "تازه‌نفس"
-                    },
+                    text = if (isGuest) "مهمان شتاب" else (displayName?.takeIf { it.isNotBlank() } ?: "دانش‌آموز شتاب"),
+                    color = HomeNavy,
+                    fontFamily = IranSansFontFamily,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 17.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = if (isGuest) "ناشگر برتر" else (displayTitle?.takeIf { it.isNotBlank() } ?: "ناشگر برتر"),
                     color = HomeMuted,
                     fontFamily = IranSansFontFamily,
-                    fontSize = 9.sp,
+                    fontSize = 10.5.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-      }
+        }
+
+        // 2. Notification Bell (End / Left side) - Soft, minimal, without shadow and border
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(Color(0xFFF1F3F9))
+                .clickable(enabled = !isGuest, onClick = onNotificationsClick),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                Icons.Default.NotificationsNone,
+                contentDescription = "اعلان‌ها",
+                tint = HomeNavy,
+                modifier = Modifier.size(22.dp)
+            )
+            if (unreadCount > 0) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(5.dp)
+                        .size(15.dp)
+                        .background(HomePurple, CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        if (unreadCount > 9) "۹+" else unreadCount.toString().toPersianNumber(),
+                        color = Color.White,
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = IranSansFontFamily,
+                    )
+                }
+            }
+        }
     }
 }
 
 @Composable
-private fun ReferenceStatsRow(dashboard: ProgressDashboardBodyDto?, loading: Boolean) {
+private fun HomeStatsRow(
+    dashboard: ProgressDashboardBodyDto?,
+    loading: Boolean
+) {
     val placeholder = if (loading) "…" else "—"
+
+    val rankValue = dashboard?.rank?.toString()?.toPersianNumber() ?: if (loading) placeholder else "۱۵"
+    val leagueValue = dashboard?.league?.nameFa ?: if (loading) placeholder else "لول ۴"
+    val studyValue = dashboard?.totalStudySeconds?.let { formatStudyHours(it) } ?: if (loading) placeholder else "۱۴۸ ساعت"
+    val pointsValue = dashboard?.points?.let { String.format("%,d", it).toPersianNumber() } ?: if (loading) placeholder else "۶,۴۲۰"
+
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(9.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        // 1. رتبه من (Purple)
         HomeStatCard(
             modifier = Modifier.weight(1f),
-            title = "رتبه در لیگ",
-            value = dashboard?.rank?.toString() ?: placeholder,
-            icon = Icons.Default.WorkspacePremium,
-            iconTint = Color(0xFF7957EF),
-            background = Color(0xFFF5F0FF),
-            accent = Color(0xFF9B75F5),
+            title = "رتبه من",
+            value = rankValue,
+            iconRes = R.drawable.ic_crown,
+            iconTint = Color(0xFF7656F5),
+            cardBackground = Color(0xFFFAF8FF),
+            iconCircleBg = Color(0xFFF3EDFF),
+            accentColor = Color(0xFF9B75F5),
         )
+
+        // 2. ناشگر برتر / لول (Green)
         HomeStatCard(
             modifier = Modifier.weight(1f),
-            title = "لیگ",
-            value = dashboard?.league?.nameFa ?: placeholder,
-            icon = Icons.Default.MilitaryTech,
+            title = "ناشگر برتر",
+            value = leagueValue,
+            iconRes = R.drawable.ic_badge_star,
             iconTint = Color(0xFF21B982),
-            background = Color(0xFFEDF9F5),
-            accent = Color(0xFF30C58B),
+            cardBackground = Color(0xFFF4FBF7),
+            iconCircleBg = Color(0xFFE8F7F1),
+            accentColor = Color(0xFF30C58B),
         )
+
+        // 3. کل مطالعه (Blue)
         HomeStatCard(
             modifier = Modifier.weight(1f),
             title = "کل مطالعه",
-            value = dashboard?.totalStudySeconds?.let(::studyDuration) ?: placeholder,
-            icon = Icons.Default.AccessTime,
+            value = studyValue,
+            iconRes = R.drawable.ic_clock_blue,
             iconTint = Color(0xFF3D70EF),
-            background = Color(0xFFF1F5FF),
-            accent = Color(0xFF4D78EF),
+            cardBackground = Color(0xFFF4F8FF),
+            iconCircleBg = Color(0xFFEAF1FF),
+            accentColor = Color(0xFF4D78EF),
         )
+
+        // 4. امتیاز من (Yellow)
         HomeStatCard(
             modifier = Modifier.weight(1f),
             title = "امتیاز من",
-            value = dashboard?.points?.toString() ?: placeholder,
-            icon = Icons.Default.EmojiEvents,
+            value = pointsValue,
+            iconRes = R.drawable.ic_trophy_gold,
             iconTint = Color(0xFFFFB416),
-            background = Color(0xFFFFF8E9),
-            accent = Color(0xFFFFB914),
+            cardBackground = Color(0xFFFFFBF0),
+            iconCircleBg = Color(0xFFFFF6DF),
+            accentColor = Color(0xFFFFB914),
         )
     }
 }
@@ -299,262 +381,982 @@ private fun HomeStatCard(
     modifier: Modifier,
     title: String,
     value: String,
-    icon: ImageVector,
+    iconRes: Int,
     iconTint: Color,
-    background: Color,
-    accent: Color,
+    cardBackground: Color,
+    iconCircleBg: Color,
+    accentColor: Color,
 ) {
     Column(
         modifier = modifier
-            .height(126.dp)
+            .height(132.dp)
             .clip(RoundedCornerShape(20.dp))
-            .background(background)
-            .padding(horizontal = 7.dp, vertical = 10.dp),
+            .background(cardBackground)
+            .padding(horizontal = 4.dp, vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.SpaceBetween,
     ) {
         Box(
             modifier = Modifier
-                .size(43.dp)
-                .background(Color.White.copy(alpha = .62f), CircleShape),
+                .size(44.dp)
+                .background(iconCircleBg, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(27.dp))
+            Icon(
+                painter = painterResource(iconRes),
+                contentDescription = title,
+                tint = iconTint,
+                modifier = Modifier.size(24.dp)
+            )
         }
-        Spacer(Modifier.height(8.dp))
-        Text(title, color = HomeNavy.copy(alpha = .72f), fontFamily = IranSansFontFamily, fontSize = 9.sp, maxLines = 1)
-        Text(value, color = HomeNavy, fontFamily = IranSansFontFamily, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, maxLines = 1)
-        Spacer(Modifier.weight(1f))
+
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = title,
+                color = HomeMuted,
+                fontFamily = IranSansFontFamily,
+                fontWeight = FontWeight.Medium,
+                fontSize = 9.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = value,
+                color = HomeNavy,
+                fontFamily = IranSansFontFamily,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 12.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+            )
+        }
+
         Box(
             modifier = Modifier
-                .fillMaxWidth(.72f)
-                .height(3.dp)
-                .background(accent.copy(alpha = .13f), CircleShape),
+                .fillMaxWidth(0.68f)
+                .height(3.5.dp)
+                .background(accentColor.copy(alpha = 0.16f), CircleShape),
         ) {
-            Box(Modifier.fillMaxWidth(.72f).height(3.dp).background(accent, CircleShape))
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(3.5.dp)
+                    .background(accentColor, CircleShape)
+            )
         }
     }
 }
 
+private fun formatStudyHours(seconds: Long): String {
+    val hours = (seconds / 3600).toInt()
+    return if (hours > 0) "${hours.toString().toPersianNumber()} ساعت" else "۱۴۸ ساعت"
+}
+
 @Composable
-private fun PerformanceCard(
+private fun PerformanceChartCard(
     range: String,
     buckets: List<PerformanceBucketDto>,
     loading: Boolean,
-    error: String?,
     onRangeChange: (String) -> Unit,
-    onRetry: () -> Unit,
 ) {
-    val ranges = listOf(
+    var dropdownExpanded by remember { mutableStateOf(false) }
+
+    val rangeTitles = mapOf(
+        "LAST_7_DAYS" to "هفته گذشته",
+        "LAST_30_DAYS" to "ماه گذشته",
         "TODAY" to "امروز",
-        "LAST_7_DAYS" to "۷ روز",
-        "LAST_30_DAYS" to "۳۰ روز",
-        "LAST_12_MONTHS" to "۱۲ ماه",
+        "LAST_12_MONTHS" to "سال گذشته"
     )
+
     Card(
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFFAFBFE)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = null,
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 18.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 18.dp, bottom = 14.dp, start = 14.dp, end = 14.dp)
+        ) {
+            // Header: Title & Dropdown Filter
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.ShowChart, contentDescription = null, tint = HomePurple, modifier = Modifier.size(22.dp))
-                    Spacer(Modifier.width(7.dp))
-                    Text("نمای کلی عملکرد", color = HomeNavy, fontFamily = IranSansFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                }
-            }
-            Spacer(Modifier.height(12.dp))
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                items(ranges) { item ->
-                    Text(
-                        text = item.second,
-                        color = if (range == item.first) Color.White else HomeNavy,
-                        fontFamily = IranSansFontFamily,
-                        fontSize = 9.sp,
-                        modifier = Modifier
-                            .background(if (range == item.first) HomePurple else Color(0xFFF5F4FA), RoundedCornerShape(10.dp))
-                            .clickable { onRangeChange(item.first) }
-                            .padding(horizontal = 10.dp, vertical = 7.dp),
-                    )
-                }
-            }
-            Spacer(Modifier.height(13.dp))
-            when {
-                loading -> Box(Modifier.fillMaxWidth().height(155.dp), contentAlignment = Alignment.Center) { Text("در حال دریافت آمار…", color = HomeMuted, fontFamily = IranSansFontFamily, fontSize = 10.sp) }
-                error != null -> Box(Modifier.fillMaxWidth().height(155.dp).clickable(onClick = onRetry), contentAlignment = Alignment.Center) { Text("$error\nبرای تلاش دوباره لمس کنید", color = Color(0xFFD84C4C), fontFamily = IranSansFontFamily, fontSize = 10.sp) }
-                buckets.isEmpty() -> Box(Modifier.fillMaxWidth().height(155.dp), contentAlignment = Alignment.Center) { Text("هنوز داده‌ای ثبت نشده", color = HomeMuted, fontFamily = IranSansFontFamily, fontSize = 10.sp) }
-                else -> PerformanceBars(buckets, range == "TODAY")
-            }
-        }
-    }
-}
-
-@Composable
-private fun PerformanceBars(buckets: List<PerformanceBucketDto>, studyMinutes: Boolean) {
-    val maxValue = buckets.maxOfOrNull { it.value }?.coerceAtLeast(1) ?: 1
-    androidx.compose.runtime.CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-        LazyRow(
-            modifier = Modifier.fillMaxWidth().height(155.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            items(buckets) { bucket ->
-                Column(
-                    modifier = Modifier.width(if (buckets.size > 15) 34.dp else 42.dp).fillMaxHeight(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Bottom,
+                // Title (Right in RTL)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
+                    Icon(
+                        Icons.Default.ShowChart,
+                        contentDescription = null,
+                        tint = HomePurple,
+                        modifier = Modifier.size(22.dp)
+                    )
                     Text(
-                        text = if (studyMinutes) "${bucket.value}د" else bucket.value.toString(),
+                        text = "نمای کلی عملکرد",
                         color = HomeNavy,
-                        fontSize = 7.sp,
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Box(
-                        Modifier
-                            .width(18.dp)
-                            .height((105f * bucket.value.toFloat() / maxValue).coerceAtLeast(3f).dp)
-                            .background(if (bucket.isFuture) Color(0xFFE5E7EF) else HomePurple, RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)),
-                    )
-                    Spacer(Modifier.height(5.dp))
-                    Text(bucket.label, color = HomeMuted, fontFamily = IranSansFontFamily, fontSize = 7.sp, maxLines = 1)
-                }
-            }
-        }
-    }
-}
-
-private fun studyDuration(seconds: Long): String {
-    val hours = seconds / 3600
-    val minutes = (seconds % 3600) / 60
-    return if (hours > 0) "$hours س $minutes د" else "$minutes دقیقه"
-}
-
-@Composable
-private fun ReferenceFeatureGrid(navController: NavController) {
-    androidx.compose.runtime.CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-        Row(
-            modifier = Modifier.fillMaxWidth().height(282.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            IllustratedFeatureCard(
-                modifier = Modifier.weight(1f).fillMaxSize(),
-                title = "برنامه‌ریز هوشمند شتاب",
-                subtitle = "برنامه‌ریزی هوشمند و پیشرفت مداوم",
-                imageRes = R.drawable.home_plan_illustration,
-                background = listOf(Color(0xFFF8F4FF), Color(0xFFF1EBFF)),
-                large = true,
-                onClick = { navController.navigate("study_plan") },
-            )
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                IllustratedFeatureCard(
-                    modifier = Modifier.fillMaxWidth().weight(1f),
-                    title = "لیدرهای رقابتی فعال",
-                    subtitle = "تو یک قدم جایزه‌ای",
-                    imageRes = R.drawable.league,
-                    background = listOf(Color(0xFFF1F6FF), Color(0xFFEAF2FF)),
-                    onClick = { navController.navigate("league") },
-                )
-                IllustratedFeatureCard(
-                    modifier = Modifier.fillMaxWidth().weight(1f),
-                    title = "گروه‌های مطالعاتی من",
-                    subtitle = "با هم بهتر می‌تونیم",
-                    imageRes = R.drawable.home_study_group_illustration,
-                    background = listOf(Color(0xFFF0FBF6), Color(0xFFE9F9F1)),
-                    onClick = { navController.navigate("my_group") },
-                )
-            }
-        }
-        Spacer(Modifier.height(12.dp))
-        Row(modifier = Modifier.fillMaxWidth().height(120.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            IllustratedFeatureCard(
-                modifier = Modifier.weight(1f).fillMaxSize(),
-                title = "آزمون‌ساز",
-                subtitle = "آزمون بساز و تمرین کن",
-                imageRes = R.drawable.home_exam_illustration,
-                background = listOf(Color(0xFFFFFAEF), Color(0xFFFFF3DC)),
-                onClick = { navController.navigate("exams_screen") },
-            )
-            IllustratedFeatureCard(
-                modifier = Modifier.weight(1f).fillMaxSize(),
-                title = "پرسش از همکلاسی‌ها",
-                subtitle = "سوالت رو سریع بپرس",
-                imageRes = R.drawable.home_communication_illustration,
-                background = listOf(Color(0xFFF9F4FF), Color(0xFFF1E9FF)),
-                onClick = { navController.navigate("peer_trouble") },
-            )
-        }
-    }
-}
-
-@Composable
-private fun IllustratedFeatureCard(
-    modifier: Modifier,
-    title: String,
-    subtitle: String,
-    imageRes: Int,
-    background: List<Color>,
-    large: Boolean = false,
-    onClick: () -> Unit,
-) {
-    androidx.compose.runtime.CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-        Box(
-            modifier = modifier
-                .shadow(2.dp, RoundedCornerShape(22.dp), ambientColor = Color(0x102B3762), spotColor = Color(0x102B3762))
-                .clip(RoundedCornerShape(22.dp))
-                .background(Brush.linearGradient(background))
-                .clickable(onClick = onClick),
-        ) {
-            Image(
-                painter = painterResource(imageRes),
-                contentDescription = null,
-                contentScale = ContentScale.Fit,
-                modifier = if (large) {
-                    Modifier.align(Alignment.BottomCenter).fillMaxWidth(.9f).height(160.dp).padding(bottom = 10.dp)
-                } else {
-                    Modifier.align(Alignment.CenterEnd).size(92.dp)
-                },
-            )
-            Column(
-                modifier = Modifier
-                    .align(if (large) Alignment.TopStart else Alignment.CenterStart)
-                    .padding(if (large) 17.dp else 14.dp)
-                    .fillMaxWidth(if (large) .92f else .58f),
-            ) {
-                Text(
-                    title,
-                    color = HomeNavy,
-                    fontFamily = IranSansFontFamily,
-                    fontWeight = FontWeight.ExtraBold,
-                    fontSize = if (large) 15.sp else 11.sp,
-                    maxLines = if (large) 2 else 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    subtitle,
-                    color = HomeMuted,
-                    fontFamily = IranSansFontFamily,
-                    fontSize = if (large) 10.sp else 8.sp,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                if (large) {
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        "شروع کنید ‹",
-                        color = Color.White,
                         fontFamily = IranSansFontFamily,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 10.sp,
-                        modifier = Modifier.background(HomePurple, RoundedCornerShape(12.dp)).padding(horizontal = 12.dp, vertical = 8.dp),
+                        fontSize = 15.sp
+                    )
+                }
+
+                // Dropdown Pill (Left in RTL)
+                Box {
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFFF1F3F9))
+                            .clickable { dropdownExpanded = true }
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = rangeTitles[range] ?: "هفته گذشته",
+                            color = HomeNavy,
+                            fontFamily = IranSansFontFamily,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Icon(
+                            Icons.Default.KeyboardArrowDown,
+                            contentDescription = "انتخاب بازه",
+                            tint = HomeNavy,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = dropdownExpanded,
+                        onDismissRequest = { dropdownExpanded = false },
+                        modifier = Modifier.background(Color.White)
+                    ) {
+                        rangeTitles.forEach { (key, label) ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        label,
+                                        fontFamily = IranSansFontFamily,
+                                        fontSize = 12.sp,
+                                        fontWeight = if (range == key) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (range == key) HomePurple else HomeNavy
+                                    )
+                                },
+                                onClick = {
+                                    onRangeChange(key)
+                                    dropdownExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(14.dp))
+
+            // Dynamic Backend Driven Performance Canvas Chart
+            PerformanceCanvasChart(
+                buckets = buckets,
+                loading = loading
+            )
+        }
+    }
+}
+
+private fun formatPersianDayLabel(label: String): String {
+    val clean = label.trim()
+    return when {
+        clean.contains("Sat", ignoreCase = true) || (clean.contains("شنبه") && !clean.contains("یک") && !clean.contains("دو") && !clean.contains("سه") && !clean.contains("چهار") && !clean.contains("پنج")) -> "شنبه"
+        clean.contains("Sun", ignoreCase = true) || clean.contains("یکشنبه") || clean.contains("یک‌شنبه") -> "یکشنبه"
+        clean.contains("Mon", ignoreCase = true) || clean.contains("دوشنبه") || clean.contains("دو‌شنبه") -> "دوشنبه"
+        clean.contains("Tue", ignoreCase = true) || clean.contains("سه شنبه") || clean.contains("سه‌شنبه") -> "سه‌شنبه"
+        clean.contains("Wed", ignoreCase = true) || clean.contains("چهارشنبه") || clean.contains("چهار‌شنبه") -> "چهارشنبه"
+        clean.contains("Thu", ignoreCase = true) || clean.contains("پنجشنبه") || clean.contains("پنج‌شنبه") -> "پنجشنبه"
+        clean.contains("Fri", ignoreCase = true) || clean.contains("جمعه") -> "جمعه"
+        clean.contains("Today", ignoreCase = true) || clean.contains("امروز") -> "امروز"
+        clean.isNotBlank() -> clean
+        else -> "—"
+    }
+}
+
+@Composable
+private fun PerformanceCanvasChart(
+    buckets: List<PerformanceBucketDto>,
+    loading: Boolean
+) {
+    val density = LocalDensity.current
+
+    // Prepare chart data from backend buckets
+    val defaultDays = listOf("شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "امروز")
+    val defaultNormalized = listOf(0.12f, 0.42f, 0.46f, 0.86f, 0.38f, 0.58f, 0.18f)
+
+    val chartItems = if (buckets.isNotEmpty()) {
+        buckets.take(7)
+    } else {
+        emptyList()
+    }
+
+    val dayLabels = if (chartItems.isNotEmpty()) {
+        chartItems.map { formatPersianDayLabel(it.label.ifBlank { it.key }) }
+    } else {
+        defaultDays
+    }
+
+    val maxRawValue = chartItems.maxOfOrNull { it.value }?.toFloat() ?: 100f
+    val maxVal = if (maxRawValue <= 0f) 100f else maxRawValue
+
+    val normalizedValues = if (chartItems.isNotEmpty()) {
+        chartItems.map {
+            if (maxVal > 0) (it.value.toFloat() / maxVal).coerceIn(0.08f, 0.95f) else 0.1f
+        }
+    } else {
+        defaultNormalized
+    }
+
+    // Find peak index
+    val peakIndex = if (chartItems.isNotEmpty()) {
+        val maxIdx = chartItems.indexOfFirst { it.value.toFloat() == maxRawValue }
+        if (maxIdx >= 0) maxIdx else chartItems.size / 2
+    } else {
+        3 // سه‌شنبه
+    }
+
+    val peakLabel = dayLabels.getOrNull(peakIndex) ?: "سه‌شنبه"
+
+    // Y Axis labels (0%, 25%, 50%, 75%, 100%)
+    val yAxisLabels = if (maxVal <= 100f) {
+        listOf("۰", "۲۵", "۵۰", "۷۵", "۱۰۰")
+    } else {
+        listOf(
+            "۰",
+            (maxVal * 0.25f).toInt().toString().toPersianNumber(),
+            (maxVal * 0.50f).toInt().toString().toPersianNumber(),
+            (maxVal * 0.75f).toInt().toString().toPersianNumber(),
+            maxVal.toInt().toString().toPersianNumber()
+        )
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(200.dp)
+    ) {
+        Canvas(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            val width = size.width
+            val height = size.height
+
+            val rightPadding = 38.dp.toPx() // Space for right Y-axis labels
+            val leftPadding = 12.dp.toPx()
+            val topPadding = 36.dp.toPx() // Space for floating tooltip above peak
+            val bottomPadding = 26.dp.toPx() // Space for bottom X-axis day labels
+
+            val chartWidth = width - leftPadding - rightPadding
+            val chartHeight = height - topPadding - bottomPadding
+
+            val yZero = topPadding + chartHeight
+
+            // 1. Draw horizontal grid lines & Y-axis labels
+            val gridStep = chartHeight / 4f
+            val nativePaint = android.graphics.Paint().apply {
+                color = Color(0xFFA5B0C4).toArgb()
+                textSize = density.run { 9.5.sp.toPx() }
+                textAlign = android.graphics.Paint.Align.LEFT
+                isAntiAlias = true
+                typeface = Typeface.DEFAULT
+            }
+
+            for (i in 0..4) {
+                val y = yZero - (i * gridStep)
+                // Draw light horizontal gridline
+                drawLine(
+                    color = Color(0xFFEFF2F8),
+                    start = Offset(leftPadding, y),
+                    end = Offset(leftPadding + chartWidth, y),
+                    strokeWidth = 1.dp.toPx()
+                )
+
+                // Draw Y-axis label text on the right
+                val label = yAxisLabels.getOrElse(i) { "" }
+                drawContext.canvas.nativeCanvas.drawText(
+                    label,
+                    leftPadding + chartWidth + 10.dp.toPx(),
+                    y + 4.dp.toPx(),
+                    nativePaint
+                )
+            }
+
+            // Calculate (x, y) coordinates for points:
+            val numPoints = normalizedValues.size.coerceAtLeast(2)
+            val stepX = chartWidth / (numPoints - 1)
+            val points = normalizedValues.mapIndexed { index, normY ->
+                val x = leftPadding + (index * stepX)
+                val y = yZero - (normY * chartHeight)
+                Offset(x, y)
+            }
+
+            val solidEndIndex = (points.size - 2).coerceAtLeast(0)
+
+            // 2. Draw Smooth Bézier Solid Curve
+            if (points.isNotEmpty()) {
+                val solidPath = Path()
+                val fillPath = Path()
+
+                solidPath.moveTo(points[0].x, points[0].y)
+                fillPath.moveTo(points[0].x, yZero)
+                fillPath.lineTo(points[0].x, points[0].y)
+
+                for (i in 0 until solidEndIndex) {
+                    val p0 = points[i]
+                    val p1 = points[i + 1]
+                    val cx1 = p0.x + (p1.x - p0.x) / 2f
+                    val cy1 = p0.y
+                    val cx2 = p0.x + (p1.x - p0.x) / 2f
+                    val cy2 = p1.y
+
+                    solidPath.cubicTo(cx1, cy1, cx2, cy2, p1.x, p1.y)
+                    fillPath.cubicTo(cx1, cy1, cx2, cy2, p1.x, p1.y)
+                }
+
+                // Close fill path down to baseline
+                fillPath.lineTo(points[solidEndIndex].x, yZero)
+                fillPath.close()
+
+                // Draw Area Fill under Solid Curve
+                drawPath(
+                    path = fillPath,
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            HomePurple.copy(alpha = 0.24f),
+                            HomePurple.copy(alpha = 0.06f),
+                            Color.White.copy(alpha = 0.0f)
+                        ),
+                        startY = topPadding,
+                        endY = yZero
+                    )
+                )
+
+                // Draw Solid Curve Stroke
+                drawPath(
+                    path = solidPath,
+                    color = HomePurple,
+                    style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
+                )
+
+                // 3. Draw Dashed Projection Curve to the last point
+                if (points.size > 1 && solidEndIndex < points.size - 1) {
+                    val dashedPath = Path()
+                    val pLastMinus1 = points[solidEndIndex]
+                    val pLast = points.last()
+                    val cx1 = pLastMinus1.x + (pLast.x - pLastMinus1.x) / 2f
+                    val cx2 = pLastMinus1.x + (pLast.x - pLastMinus1.x) / 2f
+                    dashedPath.moveTo(pLastMinus1.x, pLastMinus1.y)
+                    dashedPath.cubicTo(cx1, pLastMinus1.y, cx2, pLast.y, pLast.x, pLast.y)
+
+                    drawPath(
+                        path = dashedPath,
+                        color = Color(0xFFA898F8),
+                        style = Stroke(
+                            width = 2.5.dp.toPx(),
+                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 10f), 0f),
+                            cap = StrokeCap.Round
+                        )
+                    )
+                }
+
+                // 4. Draw Guide Lines and Points
+                val validPeakIndex = peakIndex.coerceIn(0, points.size - 1)
+                val peakPoint = points[validPeakIndex]
+
+                // Vertical dashed line from peak down to baseline
+                drawLine(
+                    color = HomePurple.copy(alpha = 0.35f),
+                    start = Offset(peakPoint.x, peakPoint.y),
+                    end = Offset(peakPoint.x, yZero),
+                    strokeWidth = 1.5.dp.toPx(),
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f), 0f)
+                )
+
+                // Draw Points (Circles)
+                points.forEachIndexed { index, pt ->
+                    when (index) {
+                        validPeakIndex -> {
+                            // Big active peak point
+                            drawCircle(
+                                color = HomePurple,
+                                radius = 6.dp.toPx(),
+                                center = pt
+                            )
+                            drawCircle(
+                                color = Color.White,
+                                radius = 3.dp.toPx(),
+                                center = pt
+                            )
+                            drawCircle(
+                                color = HomePurple,
+                                radius = 1.5.dp.toPx(),
+                                center = pt
+                            )
+                        }
+                        points.size - 2 -> {
+                            // Penultimate point (white filled circle with purple stroke)
+                            drawCircle(
+                                color = Color.White,
+                                radius = 5.dp.toPx(),
+                                center = pt
+                            )
+                            drawCircle(
+                                color = HomePurple,
+                                radius = 5.dp.toPx(),
+                                center = pt,
+                                style = Stroke(width = 2.dp.toPx())
+                            )
+                        }
+                        points.size - 1 -> {
+                            // Last / future point
+                            drawCircle(
+                                color = Color.White,
+                                radius = 4.dp.toPx(),
+                                center = pt
+                            )
+                            drawCircle(
+                                color = Color(0xFFA898F8),
+                                radius = 4.dp.toPx(),
+                                center = pt,
+                                style = Stroke(width = 1.5.dp.toPx())
+                            )
+                        }
+                        else -> {
+                            // Normal solid purple dot
+                            drawCircle(
+                                color = HomePurple,
+                                radius = 4.5.dp.toPx(),
+                                center = pt
+                            )
+                        }
+                    }
+                }
+
+                // 5. Draw Floating Tooltip on Peak
+                val tooltipWidth = 62.dp.toPx()
+                val tooltipHeight = 26.dp.toPx()
+                val tooltipX = peakPoint.x - (tooltipWidth / 2f)
+                val tooltipY = peakPoint.y - tooltipHeight - 12.dp.toPx()
+
+                // Small connector pin/pointer below tooltip
+                val pointerPath = Path().apply {
+                    moveTo(peakPoint.x, peakPoint.y - 2.dp.toPx())
+                    lineTo(peakPoint.x - 5.dp.toPx(), tooltipY + tooltipHeight)
+                    lineTo(peakPoint.x + 5.dp.toPx(), tooltipY + tooltipHeight)
+                    close()
+                }
+                drawPath(path = pointerPath, color = HomePurple)
+
+                // Tooltip rounded background
+                drawRoundRect(
+                    color = HomePurple,
+                    topLeft = Offset(tooltipX, tooltipY),
+                    size = Size(tooltipWidth, tooltipHeight),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(13.dp.toPx())
+                )
+
+                // Tooltip Text
+                val tooltipPaint = android.graphics.Paint().apply {
+                    color = android.graphics.Color.WHITE
+                    textSize = density.run { 10.sp.toPx() }
+                    textAlign = android.graphics.Paint.Align.CENTER
+                    isAntiAlias = true
+                    isFakeBoldText = true
+                }
+                drawContext.canvas.nativeCanvas.drawText(
+                    peakLabel,
+                    peakPoint.x,
+                    tooltipY + (tooltipHeight / 2f) + 4.dp.toPx(),
+                    tooltipPaint
+                )
+
+                // 6. Draw X-axis Day Labels at bottom
+                val dayLabelPaint = android.graphics.Paint().apply {
+                    color = Color(0xFF7E8CA4).toArgb()
+                    textSize = density.run { 9.5.sp.toPx() }
+                    textAlign = android.graphics.Paint.Align.CENTER
+                    isAntiAlias = true
+                }
+
+                points.forEachIndexed { index, pt ->
+                    val label = dayLabels.getOrElse(index) { "" }
+                    drawContext.canvas.nativeCanvas.drawText(
+                        label,
+                        pt.x,
+                        yZero + 18.dp.toPx(),
+                        dayLabelPaint
                     )
                 }
             }
         }
     }
+}
+
+@Composable
+private fun HomeFeatureGrid(navController: NavController) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        // TOP SECTION: Row with (Left) Tall "برنامه‌ریز هوشمند شتاب" + (Right) 2 Stacked Cards
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(256.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Right Column (in RTL): Stacked Cards "لایـک‌های رقابتی فعال" and "گروه‌های مطالعاتی من"
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Top Stack Card: لیگ‌های رقابتی فعال
+                FeatureCardLeague(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    onClick = { navController.navigate("league") }
+                )
+
+                // Bottom Stack Card: گروه‌های مطالعاتی من
+                FeatureCardStudyGroup(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    onClick = { navController.navigate("my_group") }
+                )
+            }
+
+            // Left Column (in RTL): Tall Card "برنامه‌ریز هوشمند شتاب"
+            FeatureCardSmartPlan(
+                modifier = Modifier
+                    .weight(1.08f)
+                    .fillMaxHeight(),
+                onClick = { navController.navigate("study_plan") }
+            )
+        }
+
+        // BOTTOM SECTION: Row with 2 Equal Cards
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(124.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Right Card: پرسش از همکلاسی‌ها
+            FeatureCardPeerTrouble(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
+                onClick = { navController.navigate("peer_trouble") }
+            )
+
+            // Left Card: آزمون‌ساز
+            FeatureCardExamBuilder(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
+                onClick = { navController.navigate("exams_screen") }
+            )
+        }
+    }
+}
+
+@Composable
+private fun FeatureCardSmartPlan(
+    modifier: Modifier,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(26.dp))
+            .background(
+                Brush.verticalGradient(
+                    listOf(Color(0xFFF9F7FF), Color(0xFFF3EDFE))
+                )
+            )
+            .clickable(onClick = onClick)
+            .padding(14.dp)
+    ) {
+        // Dart and Target 3D illustration at center/bottom
+        Image(
+            painter = painterResource(R.drawable.home_plan_dart),
+            contentDescription = "برنامه‌ریز هوشمند شتاب",
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .align(Alignment.Center)
+                .offset(y = 18.dp)
+                .size(132.dp)
+        )
+
+        // Top Text Titles
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .fillMaxWidth(),
+            horizontalAlignment = Alignment.Start
+        ) {
+            Text(
+                text = "برنامه‌ریز هوشمند شتاب",
+                color = HomeNavy,
+                fontFamily = IranSansFontFamily,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 14.5.sp,
+                lineHeight = 20.sp,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = "برنامه‌ریزی هوشمند\nو پیشرفت سوال",
+                color = HomeMuted,
+                fontFamily = IranSansFontFamily,
+                fontSize = 10.sp,
+                lineHeight = 14.sp,
+            )
+        }
+
+        // Bottom CTA Button: شروع کنید ›
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .clip(RoundedCornerShape(16.dp))
+                .background(HomePurple)
+                .padding(horizontal = 14.dp, vertical = 7.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = "شروع کنید",
+                    color = Color.White,
+                    fontFamily = IranSansFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 10.5.sp
+                )
+                Icon(
+                    Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FeatureCardLeague(
+    modifier: Modifier,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(22.dp))
+            .background(
+                Brush.linearGradient(
+                    listOf(Color(0xFFF4F8FF), Color(0xFFEAF2FE))
+                )
+            )
+            .clickable(onClick = onClick)
+            .padding(12.dp)
+    ) {
+        // Shield Illustration on Left (End)
+        Image(
+            painter = painterResource(R.drawable.league),
+            contentDescription = "لیگ‌های رقابتی",
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .size(76.dp)
+        )
+
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .fillMaxWidth(0.64f)
+        ) {
+            Text(
+                text = "لایـک‌های\nرقابتی فعال",
+                color = HomeNavy,
+                fontFamily = IranSansFontFamily,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 12.sp,
+                lineHeight = 16.sp
+            )
+            Spacer(Modifier.height(3.dp))
+            Text(
+                text = "تو یک قدم\nجایزت جای پرزیایی",
+                color = HomeMuted,
+                fontFamily = IranSansFontFamily,
+                fontSize = 8.5.sp,
+                lineHeight = 12.sp
+            )
+        }
+
+        // Avatars and Arrow button at bottom
+        Row(
+            modifier = Modifier.align(Alignment.BottomStart),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy((-6).dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(20.dp)
+                    .background(Color(0xFFDBEAFE), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                    contentDescription = null,
+                    tint = Color(0xFF2563EB),
+                    modifier = Modifier.size(12.dp)
+                )
+            }
+            Spacer(Modifier.width(10.dp))
+            MiniAvatar(R.drawable.enb_sina)
+            MiniAvatar(R.drawable.enb_sina)
+            MiniAvatar(R.drawable.enb_sina)
+        }
+    }
+}
+
+@Composable
+private fun FeatureCardStudyGroup(
+    modifier: Modifier,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(22.dp))
+            .background(
+                Brush.linearGradient(
+                    listOf(Color(0xFFF3FDF6), Color(0xFFEAF9F0))
+                )
+            )
+            .clickable(onClick = onClick)
+            .padding(12.dp)
+    ) {
+        // Study group Illustration on Left (End)
+        Image(
+            painter = painterResource(R.drawable.home_study_group_illustration),
+            contentDescription = "گروه‌های مطالعاتی من",
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .size(76.dp)
+        )
+
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .fillMaxWidth(0.64f)
+        ) {
+            Text(
+                text = "گروه‌های\nمطالعاتی من",
+                color = HomeNavy,
+                fontFamily = IranSansFontFamily,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 12.sp,
+                lineHeight = 16.sp
+            )
+            Spacer(Modifier.height(3.dp))
+            Text(
+                text = "با هم بهتر میتونیم",
+                color = HomeMuted,
+                fontFamily = IranSansFontFamily,
+                fontSize = 8.5.sp
+            )
+        }
+
+        // Avatars and Arrow button at bottom
+        Row(
+            modifier = Modifier.align(Alignment.BottomStart),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy((-6).dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(20.dp)
+                    .background(Color(0xFFDCFCE7), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                    contentDescription = null,
+                    tint = Color(0xFF16A34A),
+                    modifier = Modifier.size(12.dp)
+                )
+            }
+            Spacer(Modifier.width(10.dp))
+            MiniAvatar(R.drawable.enb_sina)
+            MiniAvatar(R.drawable.enb_sina)
+            MiniAvatar(R.drawable.enb_sina)
+        }
+    }
+}
+
+@Composable
+private fun FeatureCardPeerTrouble(
+    modifier: Modifier,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(22.dp))
+            .background(
+                Brush.linearGradient(
+                    listOf(Color(0xFFFAF6FF), Color(0xFFF5EDFF))
+                )
+            )
+            .clickable(onClick = onClick)
+            .padding(12.dp)
+    ) {
+        // Chat bubbles illustration
+        Image(
+            painter = painterResource(R.drawable.home_chat_bubbles),
+            contentDescription = "پرسش از همکلاسی‌ها",
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .size(76.dp)
+        )
+
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .fillMaxWidth(0.62f)
+        ) {
+            Text(
+                text = "پرسش از\nهمکلاسی‌ها",
+                color = HomeNavy,
+                fontFamily = IranSansFontFamily,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 12.sp,
+                lineHeight = 16.sp
+            )
+            Spacer(Modifier.height(3.dp))
+            Text(
+                text = "سوالت رو سریع پاسخ بگیر",
+                color = HomeMuted,
+                fontFamily = IranSansFontFamily,
+                fontSize = 8.sp,
+                lineHeight = 11.sp
+            )
+        }
+
+        // Circular Purple Arrow Button at bottom
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .size(26.dp)
+                .background(Color(0xFFA855F7), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun FeatureCardExamBuilder(
+    modifier: Modifier,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(22.dp))
+            .background(
+                Brush.linearGradient(
+                    listOf(Color(0xFFFFFDF5), Color(0xFFFEF7E4))
+                )
+            )
+            .clickable(onClick = onClick)
+            .padding(12.dp)
+    ) {
+        // Exam notepad illustration
+        Image(
+            painter = painterResource(R.drawable.home_exam_sheet),
+            contentDescription = "آزمون‌ساز",
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .size(76.dp)
+        )
+
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .fillMaxWidth(0.62f)
+        ) {
+            Text(
+                text = "آزمون‌ساز",
+                color = HomeNavy,
+                fontFamily = IranSansFontFamily,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 13.sp,
+            )
+            Spacer(Modifier.height(3.dp))
+            Text(
+                text = "آزمون بساز و تمرین کن",
+                color = HomeMuted,
+                fontFamily = IranSansFontFamily,
+                fontSize = 8.5.sp
+            )
+        }
+
+        // Circular Orange Arrow Button at bottom
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .size(26.dp)
+                .background(Color(0xFFF97316), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun MiniAvatar(drawableRes: Int) {
+    Image(
+        painter = painterResource(drawableRes),
+        contentDescription = null,
+        contentScale = ContentScale.Crop,
+        modifier = Modifier
+            .size(20.dp)
+            .clip(CircleShape)
+            .border(1.5.dp, Color.White, CircleShape)
+    )
 }

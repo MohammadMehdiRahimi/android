@@ -19,10 +19,21 @@ class AuthInterceptor(
         requestBuilder.addHeader("Content-Type", "application/json")
         requestBuilder.addHeader("Accept-Language", "fa") // Persian default locale
 
-        // Inject Bearer token if user is logged in
-        val token = tokenManager.getToken()
-        if (!token.isNullOrBlank()) {
-            requestBuilder.addHeader("Authorization", "Bearer $token")
+        val noAuth = originalRequest.header("No-Authentication") == "true"
+        if (noAuth) {
+            requestBuilder.removeHeader("No-Authentication")
+        } else {
+            // Inject Bearer token if user is logged in
+            val token = tokenManager.getToken()
+            if (!token.isNullOrBlank()) {
+                requestBuilder.addHeader("Authorization", "Bearer $token")
+            }
+
+            // Inject Registration token if present
+            val registrationToken = tokenManager.getRegistrationToken()
+            if (!registrationToken.isNullOrBlank()) {
+                requestBuilder.addHeader("X-Registration-Token", registrationToken)
+            }
         }
 
         return chain.proceed(requestBuilder.build())

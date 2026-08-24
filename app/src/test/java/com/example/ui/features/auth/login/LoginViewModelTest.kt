@@ -4,13 +4,30 @@ import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 
+import com.example.network.NetworkResult
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+
 class LoginViewModelTest {
 
     private lateinit var viewModel: LoginViewModel
 
     @Before
     fun setUp() {
-        viewModel = LoginViewModel()
+        val mockRepo = object : com.example.data.repository.AuthRepository {
+            override fun sendOtp(phone: String): Flow<NetworkResult<Unit>> = flow {}
+            override fun verifyOtp(phone: String, code: String): Flow<NetworkResult<com.example.network.OtpVerifyResponseDto>> = flow {}
+            override fun register(
+                phone: String,
+                registrationToken: String,
+                fullName: String,
+                grade: String,
+                fieldOfStudy: String?,
+                deviceType: String
+            ): Flow<NetworkResult<com.example.network.AuthResponseDto>> = flow {}
+            override fun logout(): Flow<NetworkResult<Unit>> = flow {}
+        }
+        viewModel = LoginViewModel(mockRepo)
     }
 
     @Test

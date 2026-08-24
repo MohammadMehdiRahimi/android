@@ -21,17 +21,90 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.util.UUID
 
+enum class StudyTaskFilter {
+    ALL,
+    IN_PROGRESS,
+    PENDING,
+    COMPLETED
+}
+
+enum class StudyTaskSortOrder {
+    DEFAULT,
+    DURATION,
+    PRIORITY
+}
+
+val StudyTaskDto.isCompleted: Boolean
+    get() = execution?.status == "COMPLETED"
+
+val StudyTaskDto.isInProgress: Boolean
+    get() = execution?.status == "ACTIVE" || execution?.status == "PAUSED" || execution?.status == "AWAITING_COMPLETION"
+
+val StudyTaskDto.isPending: Boolean
+    get() = execution == null || execution?.status == "NOT_STARTED"
+
+val StudyTaskDto.elapsedMinutes: Int
+    get() = ((execution?.activeSeconds ?: 0) / 60).coerceAtMost(plannedMinutes)
+
 data class StudyPlanUiState(
     val selectedDate: LocalDate = LocalDate.now(ZoneId.of("Asia/Tehran")),
     val catalog: StudyTaskCatalogBodyDto? = null,
     val day: DailyStudyTasksBodyDto? = null,
+    val selectedFilter: StudyTaskFilter = StudyTaskFilter.ALL,
+    val sortOrder: StudyTaskSortOrder = StudyTaskSortOrder.DEFAULT,
+    val bookmarkedIds: Set<String> = emptySet(),
     val loading: Boolean = true,
     val refreshing: Boolean = false,
     val busyTaskId: String? = null,
     val creating: Boolean = false,
+    val showAddDialog: Boolean = false,
+    val showSortMenu: Boolean = false,
     val error: String? = null,
     val mutationMessage: String? = null,
-)
+) {
+    val totalTasks: Int
+        get() = day?.summary?.total ?: day?.items?.size ?: 0
+
+    val completedTasks: Int
+        get() = day?.summary?.completed ?: day?.items?.count { it.isCompleted } ?: 0
+
+    val remainingTasks: Int
+        get() = day?.summary?.pending ?: (totalTasks - completedTasks).coerceAtLeast(0)
+
+    val totalStudyMinutes: Int
+        get() = day?.items?.sumOf { it.plannedMinutes } ?: 0
+
+    val progressFraction: Float
+        get() = if (totalTasks > 0) completedTasks.toFloat() / totalTasks.toFloat() else 0f
+
+    val remainingItems: List<StudyTaskDto>
+        get() {
+            val list = day?.items?.filter { !it.isCompleted } ?: emptyList()
+            return when (sortOrder) {
+                StudyTaskSortOrder.DEFAULT -> list
+                StudyTaskSortOrder.DURATION -> list.sortedByDescending { it.plannedMinutes }
+                StudyTaskSortOrder.PRIORITY -> list.sortedByDescending { it.periodCount }
+            }
+        }
+
+    val completedItems: List<StudyTaskDto>
+        get() = day?.items?.filter { it.isCompleted } ?: emptyList()
+
+    val filteredItems: List<StudyTaskDto>
+        get() {
+            val base = when (selectedFilter) {
+                StudyTaskFilter.ALL -> day?.items ?: emptyList()
+                StudyTaskFilter.IN_PROGRESS -> day?.items?.filter { it.isInProgress } ?: emptyList()
+                StudyTaskFilter.PENDING -> day?.items?.filter { it.isPending } ?: emptyList()
+                StudyTaskFilter.COMPLETED -> day?.items?.filter { it.isCompleted } ?: emptyList()
+            }
+            return when (sortOrder) {
+                StudyTaskSortOrder.DEFAULT -> base
+                StudyTaskSortOrder.DURATION -> base.sortedByDescending { it.plannedMinutes }
+                StudyTaskSortOrder.PRIORITY -> base.sortedByDescending { it.periodCount }
+            }
+        }
+}
 
 class StudyPlanViewModel(application: Application) : AndroidViewModel(application) {
     private val api = ApiClient.apiService
@@ -60,6 +133,37 @@ class StudyPlanViewModel(application: Application) : AndroidViewModel(applicatio
         loadDay()
     }
 
+    fun setFilter(filter: StudyTaskFilter) {
+        _state.update { it.copy(selectedFilter = filter) }
+    }
+
+    fun setSortOrder(sortOrder: StudyTaskSortOrder) {
+        _state.update { it.copy(sortOrder = sortOrder, showSortMenu = false) }
+    }
+
+    fun toggleSortMenu() {
+        _state.update { it.copy(showSortMenu = !it.showSortMenu) }
+    }
+
+    fun toggleBookmark(taskId: String) {
+        _state.update {
+            val updated = if (it.bookmarkedIds.contains(taskId)) {
+                it.bookmarkedIds - taskId
+            } else {
+                it.bookmarkedIds + taskId
+            }
+            it.copy(bookmarkedIds = updated)
+        }
+    }
+
+    fun openAddDialog() {
+        _state.update { it.copy(showAddDialog = true) }
+    }
+
+    fun closeAddDialog() {
+        _state.update { it.copy(showAddDialog = false) }
+    }
+
     fun refresh() = loadDay(refresh = true)
 
     fun clearMessage() {
@@ -86,7 +190,7 @@ class StudyPlanViewModel(application: Application) : AndroidViewModel(applicatio
         )
         when (val result = safeApiCall { api.createManualStudyTask(request) }) {
             is NetworkResult.Success -> {
-                _state.update { it.copy(creating = false, mutationMessage = "تسک با موفقیت ساخته شد") }
+                _state.update { it.copy(creating = false, showAddDialog = false, mutationMessage = "تسک با موفقیت ساخته شد") }
                 onCreated()
                 loadDay(refresh = true)
             }
@@ -275,4 +379,3 @@ class StudyPlanViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 }
-

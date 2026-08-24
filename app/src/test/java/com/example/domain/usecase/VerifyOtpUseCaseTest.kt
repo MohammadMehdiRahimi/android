@@ -7,11 +7,26 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import org.mockito.Mockito.mock
+import com.example.network.OtpVerifyResponseDto
+import com.example.network.AuthResponseDto
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 
 class VerifyOtpUseCaseTest {
 
-    private val authRepository: AuthRepository = mock(AuthRepository::class.java)
+    private val authRepository = object : AuthRepository {
+        override fun sendOtp(phone: String): Flow<NetworkResult<Unit>> = flow {}
+        override fun verifyOtp(phone: String, code: String): Flow<NetworkResult<OtpVerifyResponseDto>> = flow {}
+        override fun register(
+            phone: String,
+            registrationToken: String,
+            fullName: String,
+            grade: String,
+            fieldOfStudy: String?,
+            deviceType: String
+        ): Flow<NetworkResult<AuthResponseDto>> = flow {}
+        override fun logout(): Flow<NetworkResult<Unit>> = flow {}
+    }
     private val useCase = VerifyOtpUseCase(authRepository)
 
     @Test
