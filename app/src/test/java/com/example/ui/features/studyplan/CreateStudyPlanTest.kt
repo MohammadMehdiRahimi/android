@@ -97,6 +97,32 @@ class CreateStudyPlanTest {
     }
 
     @Test
+    fun `test selecting chapter initializes with zero pre-selected topics`() {
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        val vm = CreateStudyPlanViewModel(app)
+
+        val blockId = vm.state.value.chapterBlocks.first().blockId
+        val currentSubject = vm.state.value.selectedSubject
+        val firstChapter = currentSubject?.chapters?.firstOrNull()
+
+        if (firstChapter != null) {
+            vm.selectChapterForBlock(blockId, firstChapter.id)
+            val updatedBlock = vm.state.value.chapterBlocks.first { it.blockId == blockId }
+            assertEquals(firstChapter.id, updatedBlock.selectedChapterId)
+            assertTrue("Topics must be empty by default on chapter selection", updatedBlock.selectedTopicIds.isEmpty())
+
+            // Now toggle a topic explicitly
+            val firstTopic = firstChapter.topics.firstOrNull()
+            if (firstTopic != null) {
+                vm.toggleTopicForBlock(blockId, firstTopic.id)
+                val blockWithTopic = vm.state.value.chapterBlocks.first { it.blockId == blockId }
+                assertTrue(blockWithTopic.selectedTopicIds.contains(firstTopic.id))
+                assertEquals(1, blockWithTopic.selectedTopicIds.size)
+            }
+        }
+    }
+
+    @Test
     fun `test period increment and decrement limits`() {
         val app = ApplicationProvider.getApplicationContext<Application>()
         val vm = CreateStudyPlanViewModel(app)
@@ -127,6 +153,96 @@ class CreateStudyPlanTest {
             assertFalse(subject.minimalName.contains(" ۱"))
             assertFalse(subject.minimalName.contains(" ۲"))
             assertFalse(subject.minimalName.contains(" ۳"))
+        }
+    }
+
+    @Test
+    fun `test loading catalog state lifecycle`() {
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        // Uncached: isLoadingCatalog is true while loading in background
+        StudyPlanCatalogCache.clear()
+        val vmUncached = CreateStudyPlanViewModel(app)
+        assertTrue(vmUncached.state.value.isLoadingCatalog)
+
+        // Cached: isLoadingCatalog is false immediately
+        StudyPlanCatalogCache.put(
+            "GRADE_12",
+            "EXPERIMENTAL",
+            listOf(
+                SubjectVisualItem(
+                    id = "sub_1",
+                    name = "ریاضی ۱",
+                    minimalName = "ریاضی",
+                    drawableRes = com.example.R.drawable.ic_launcher_foreground,
+                    tintHex = 0xFF4F46E5,
+                    chapters = emptyList(),
+                ),
+            ),
+        )
+        val vmCached = CreateStudyPlanViewModel(app)
+        assertFalse(vmCached.state.value.isLoadingCatalog)
+    }
+
+    @Test
+    fun `test formatMinimalChapterName outputs numbers without fasl prefix`() {
+        val formatted1 = formatMinimalChapterName(0, "فصل اول: تابع و معادله")
+        assertEquals("۱: تابع و معادله", formatted1)
+
+        val formatted2 = formatMinimalChapterName(1, "فصل 2")
+        assertEquals("۲", formatted2)
+
+        val formatted3 = formatMinimalChapterName(2, "فصل ۳: مثلثات")
+        assertEquals("۳: مثلثات", formatted3)
+    }
+
+    @Test
+    fun `test catalog caching stores grade catalog`() {
+        val cache = StudyPlanCatalogCache
+        val testGrade = "GRADE_TEST"
+        val testMajor = "EXPERIMENTAL"
+        assertTrue(cache.get(testGrade, testMajor) == null)
+
+        val dummySubjects = listOf(
+            SubjectVisualItem(
+                id = "sub_1",
+                name = "ریاضی ۱",
+                minimalName = "ریاضی",
+                drawableRes = com.example.R.drawable.ic_launcher_foreground,
+                tintHex = 0xFF4F46E5,
+                chapters = emptyList(),
+            ),
+        )
+        cache.put(testGrade, testMajor, dummySubjects)
+
+        assertEquals(dummySubjects, cache.get(testGrade, testMajor))
+    }
+
+    @Test
+    fun `test plan summary modal display and hide`() {
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        val vm = CreateStudyPlanViewModel(app)
+
+        assertFalse(vm.state.value.isSummaryModalVisible)
+
+        // When topics are empty, requestPlanSummary should trigger ShowError
+        vm.requestPlanSummary()
+        assertFalse(vm.state.value.isSummaryModalVisible)
+
+        // Select chapter and topic
+        val blockId = vm.state.value.chapterBlocks.first().blockId
+        val currentSubject = vm.state.value.selectedSubject
+        val firstChapter = currentSubject?.chapters?.firstOrNull()
+        if (firstChapter != null) {
+            vm.selectChapterForBlock(blockId, firstChapter.id)
+            val firstTopic = firstChapter.topics.firstOrNull()
+            if (firstTopic != null) {
+                vm.toggleTopicForBlock(blockId, firstTopic.id)
+                vm.requestPlanSummary()
+                assertTrue(vm.state.value.isSummaryModalVisible)
+
+                vm.hideSummaryModal()
+                assertFalse(vm.state.value.isSummaryModalVisible)
+            }
         }
     }
 }

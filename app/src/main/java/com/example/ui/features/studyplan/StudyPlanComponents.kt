@@ -129,123 +129,22 @@ fun getSubjectVisualConfig(subjectName: String, bookName: String? = null): Subje
 @Composable
 fun StudyPlanTopHeader(
     onNotificationClick: () -> Unit = {},
-    unreadNotification: Boolean = true,
+    unreadNotification: Boolean = false,
 ) {
-    val context = LocalContext.current
-    val tokenManager = remember { TokenManager(context) }
-    val userAvatarUrl = remember { tokenManager.getProfileImageUrl() }
-
-    Row(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
+            .padding(horizontal = 20.dp, vertical = 6.dp),
+        contentAlignment = Alignment.Center,
     ) {
-        // Right side in RTL: User Avatar with online status
-        Box(
-            modifier = Modifier.size(50.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(46.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFFEDE9FE))
-                    .border(1.5.dp, Color.White, CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (!userAvatarUrl.isNullOrBlank()) {
-                    AsyncImage(
-                        model = userAvatarUrl,
-                        contentDescription = "آواتار کاربر",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(CircleShape),
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Filled.Person,
-                        contentDescription = "آواتار کاربر",
-                        tint = PlanPurple,
-                        modifier = Modifier.size(26.dp),
-                    )
-                }
-            }
-
-            // Green online badge at bottom corner
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .size(15.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF22C55E))
-                    .border(1.5.dp, Color.White, CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Check,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(9.dp),
-                )
-            }
-        }
-
-        // Center: Title and Subtitle
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.weight(1f),
-        ) {
-            Text(
-                text = stringResource(id = R.string.study_plan_title),
-                color = PlanNavy,
-                fontFamily = IranSansFontFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = 20.sp,
-                textAlign = TextAlign.Center,
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = stringResource(id = R.string.study_plan_subtitle),
-                color = PlanMuted,
-                fontFamily = IranSansFontFamily,
-                fontWeight = FontWeight.Normal,
-                fontSize = 12.sp,
-                textAlign = TextAlign.Center,
-            )
-        }
-
-        // Left side in RTL: Circular Notification Bell Button
-        Box(
-            modifier = Modifier
-                .size(46.dp)
-                .clip(CircleShape)
-                .background(Color.White)
-                .border(1.dp, PlanCardBorder, CircleShape)
-                .clickable { onNotificationClick() }
-                .testTag("notification_button"),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.Notifications,
-                contentDescription = "اعلان‌ها",
-                tint = PlanNavy,
-                modifier = Modifier.size(22.dp),
-            )
-
-            if (unreadNotification) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(top = 10.dp, end = 11.dp)
-                        .size(7.dp)
-                        .clip(CircleShape)
-                        .background(PlanPurple),
-                )
-            }
-        }
+        Text(
+            text = stringResource(id = R.string.study_plan_title),
+            color = PlanNavy,
+            fontFamily = IranSansFontFamily,
+            fontWeight = FontWeight.Bold,
+            fontSize = 18.sp,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 

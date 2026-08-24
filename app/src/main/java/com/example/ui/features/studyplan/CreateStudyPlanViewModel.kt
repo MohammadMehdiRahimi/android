@@ -58,6 +58,7 @@ data class CreateStudyPlanUiState(
         "GRADE_11" to "پایه یازدهم",
         "GRADE_10" to "پایه دهم",
     ),
+    val isLoadingCatalog: Boolean = true,
     val subjects: List<SubjectVisualItem> = emptyList(),
     val selectedSubjectId: String = "",
     val chapterBlocks: List<ChapterBlockState> = emptyList(),
@@ -65,6 +66,7 @@ data class CreateStudyPlanUiState(
     val isManualTiming: Boolean = false,
     val studyDurationMinutes: Int = 45,
     val breakDurationMinutes: Int = 15,
+    val isSummaryModalVisible: Boolean = false,
     val isSubmitting: Boolean = false,
     val errorMessage: String? = null,
     val successMessage: String? = null,
@@ -93,6 +95,22 @@ sealed interface CreateStudyPlanEvent {
     data class ShowError(val message: String) : CreateStudyPlanEvent
 }
 
+object StudyPlanCatalogCache {
+    private val cache = java.util.concurrent.ConcurrentHashMap<String, List<SubjectVisualItem>>()
+
+    fun get(gradeKey: String, majorKey: String): List<SubjectVisualItem>? {
+        return cache["${gradeKey}_${majorKey}"]
+    }
+
+    fun put(gradeKey: String, majorKey: String, subjects: List<SubjectVisualItem>) {
+        cache["${gradeKey}_${majorKey}"] = subjects
+    }
+
+    fun clear() {
+        cache.clear()
+    }
+}
+
 class CreateStudyPlanViewModel(application: Application) : AndroidViewModel(application) {
     private val api = ApiClient.apiService
     private val tokenManager = TokenManager(application)
@@ -106,8 +124,31 @@ class CreateStudyPlanViewModel(application: Application) : AndroidViewModel(appl
     init {
         val savedMajor = tokenManager.getUserMajor()
         val majorName = mapMajorToPersian(savedMajor)
-        _state.update { it.copy(userMajor = savedMajor ?: "EXPERIMENTAL", userMajorName = majorName) }
-        loadCatalog()
+        val initialGrade = _state.value.selectedGrade
+        val defaultSubjects = buildDefaultSubjects(majorName)
+        val cached = StudyPlanCatalogCache.get(initialGrade, savedMajor ?: "EXPERIMENTAL")
+        val effectiveSubjects = if (!cached.isNullOrEmpty()) cached else defaultSubjects
+        val firstSub = effectiveSubjects.first()
+        val initialBlock = ChapterBlockState(
+            blockId = "init_block_1",
+            selectedChapterId = "",
+            selectedTopicIds = emptySet(),
+        )
+
+        _state.update {
+            it.copy(
+                userMajor = savedMajor ?: "EXPERIMENTAL",
+                userMajorName = majorName,
+                subjects = effectiveSubjects,
+                selectedSubjectId = firstSub.id,
+                chapterBlocks = listOf(initialBlock),
+                isLoadingCatalog = cached == null,
+            )
+        }
+
+        if (cached == null) {
+            loadCatalog(initialGrade)
+        }
     }
 
     private fun cleanBookNameToMinimal(raw: String): String {
@@ -130,8 +171,9 @@ class CreateStudyPlanViewModel(application: Application) : AndroidViewModel(appl
         }
     }
 
-    private fun loadCatalog() {
+    private fun loadCatalog(targetGrade: String = _state.value.selectedGrade) {
         viewModelScope.launch {
+            val userMajor = _state.value.userMajor
             val userMajorName = _state.value.userMajorName
             val defaultSubjects = buildDefaultSubjects(userMajorName)
             val result = safeApiCall { api.getStudyTaskCatalog() }
@@ -148,6 +190,7 @@ class CreateStudyPlanViewModel(application: Application) : AndroidViewModel(appl
 
                 val mappedSubjects = mapCatalogToSubjects(catalogBody, effectiveMajorName)
                 if (mappedSubjects.isNotEmpty()) {
+                    StudyPlanCatalogCache.put(targetGrade, userMajor, mappedSubjects)
                     val firstSubject = mappedSubjects.first()
                     val initialBlock = ChapterBlockState(
                         blockId = UUID.randomUUID().toString(),
@@ -157,6 +200,7 @@ class CreateStudyPlanViewModel(application: Application) : AndroidViewModel(appl
 
                     _state.update {
                         it.copy(
+                            isLoadingCatalog = false,
                             userMajorName = effectiveMajorName,
                             subjects = mappedSubjects,
                             selectedSubjectId = firstSubject.id,
@@ -168,6 +212,7 @@ class CreateStudyPlanViewModel(application: Application) : AndroidViewModel(appl
             }
 
             // Fallback to rich default educational catalog based on user's field
+            StudyPlanCatalogCache.put(targetGrade, userMajor, defaultSubjects)
             val firstSub = defaultSubjects.first()
             val initialBlock = ChapterBlockState(
                 blockId = UUID.randomUUID().toString(),
@@ -176,6 +221,7 @@ class CreateStudyPlanViewModel(application: Application) : AndroidViewModel(appl
             )
             _state.update {
                 it.copy(
+                    isLoadingCatalog = false,
                     subjects = defaultSubjects,
                     selectedSubjectId = firstSub.id,
                     chapterBlocks = listOf(initialBlock),
@@ -449,7 +495,32 @@ class CreateStudyPlanViewModel(application: Application) : AndroidViewModel(appl
     }
 
     fun selectGrade(gradeKey: String, gradeName: String) {
-        _state.update { it.copy(selectedGrade = gradeKey, selectedGradeName = gradeName) }
+        val userMajor = _state.value.userMajor
+        val userMajorName = _state.value.userMajorName
+        val defaultSubjects = buildDefaultSubjects(userMajorName)
+        val cached = StudyPlanCatalogCache.get(gradeKey, userMajor)
+        val effectiveSubjects = if (!cached.isNullOrEmpty()) cached else defaultSubjects
+        val firstSub = effectiveSubjects.first()
+        val initialBlock = ChapterBlockState(
+            blockId = UUID.randomUUID().toString(),
+            selectedChapterId = "",
+            selectedTopicIds = emptySet(),
+        )
+
+        _state.update {
+            it.copy(
+                selectedGrade = gradeKey,
+                selectedGradeName = gradeName,
+                subjects = effectiveSubjects,
+                selectedSubjectId = firstSub.id,
+                chapterBlocks = listOf(initialBlock),
+                isLoadingCatalog = cached == null,
+            )
+        }
+
+        if (cached == null) {
+            loadCatalog(gradeKey)
+        }
     }
 
     fun selectSubject(subjectId: String) {
@@ -545,10 +616,8 @@ class CreateStudyPlanViewModel(application: Application) : AndroidViewModel(appl
         _state.update { it.copy(breakDurationMinutes = minutes) }
     }
 
-    fun saveStudyPlan(onSuccess: () -> Unit = {}) {
+    fun requestPlanSummary() {
         val currentState = _state.value
-        val today = LocalDate.now(ZoneId.of("Asia/Tehran")).toString()
-
         val allTopics = currentState.allSelectedTopicIds
         if (allTopics.isEmpty()) {
             val errorMsg = "لطفاً حداقل یک مبحث برای مطالعه انتخاب کنید."
@@ -562,6 +631,27 @@ class CreateStudyPlanViewModel(application: Application) : AndroidViewModel(appl
             val errorMsg = "مجموع زمان مطالعه نمی‌تواند بیش از ۲۴ ساعت (۱۴۴۰ دقیقه) باشد."
             _state.update { it.copy(errorMessage = errorMsg) }
             viewModelScope.launch { _events.emit(CreateStudyPlanEvent.ShowError(errorMsg)) }
+            return
+        }
+
+        _state.update { it.copy(isSummaryModalVisible = true, errorMessage = null) }
+    }
+
+    fun hideSummaryModal() {
+        _state.update { it.copy(isSummaryModalVisible = false) }
+    }
+
+    fun saveStudyPlan(onSuccess: () -> Unit = {}) {
+        requestPlanSummary()
+    }
+
+    fun confirmAndSubmitPlan(onSuccess: () -> Unit = {}) {
+        val currentState = _state.value
+        val today = LocalDate.now(ZoneId.of("Asia/Tehran")).toString()
+        val allTopics = currentState.allSelectedTopicIds
+
+        if (allTopics.isEmpty()) {
+            _state.update { it.copy(isSummaryModalVisible = false) }
             return
         }
 
@@ -611,6 +701,7 @@ class CreateStudyPlanViewModel(application: Application) : AndroidViewModel(appl
             _state.update { it.copy(isSubmitting = false) }
 
             if (successCount > 0 || lastErrorMessage == null) {
+                _state.update { it.copy(isSummaryModalVisible = false) }
                 _events.emit(CreateStudyPlanEvent.PlanSaved)
                 onSuccess()
             } else {

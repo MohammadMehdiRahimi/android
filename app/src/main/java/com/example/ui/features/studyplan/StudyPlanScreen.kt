@@ -287,12 +287,12 @@ fun StudyPlanScreen(
                     }
                 }
 
-                // Floating Action Button (FAB) strictly at Bottom-Left (In RTL, End is Left)
+                // Floating Action Button (FAB) anchored directly above bottom navigation bar
                 AddTaskFloatingActionButton(
                     onClick = { navController.navigate("create_study_plan") },
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
-                        .padding(end = 22.dp, bottom = 85.dp),
+                        .padding(end = 20.dp, bottom = 12.dp),
                 )
 
                 // Dialog for creating a new task manually

@@ -133,7 +133,7 @@ fun LoginScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Image(
-                            painter = painterResource(id = R.drawable.send_otp_vector),
+                            painter = painterResource(id = R.drawable.verify_otp_vector),
                             contentDescription = "OTP Illustration",
                             modifier = Modifier
                                 .fillMaxSize()

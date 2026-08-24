@@ -1,6 +1,7 @@
 package com.example.ui.features.studyplan
 
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandVertically
@@ -45,17 +46,29 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.AccessTime
 import androidx.compose.material.icons.outlined.CalendarToday
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -67,7 +80,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
+import com.example.ui.core.components.shimmerEffect
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -82,6 +97,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -103,18 +119,19 @@ fun CreateStudyPlanScreen(
     navController: NavController,
     viewModel: CreateStudyPlanViewModel = viewModel(),
 ) {
-    CreateStudyPlanScreen(
-        onBackClick = { navController.popBackStack() },
-        onNavigateToTasks = {
-            val popped = navController.popBackStack("study_plan", inclusive = false)
-            if (!popped) {
-                // If study_plan is not in backstack, navigate directly to study_plan
-                navController.navigate("study_plan") {
-                    popUpTo("main") { inclusive = false }
-                    launchSingleTop = true
-                }
+    val navigateToTasks = {
+        val popped = navController.popBackStack("study_plan", inclusive = false)
+        if (!popped) {
+            // If study_plan is not in backstack, navigate directly to study_plan
+            navController.navigate("study_plan") {
+                popUpTo("main") { inclusive = false }
+                launchSingleTop = true
             }
-        },
+        }
+    }
+    CreateStudyPlanScreen(
+        onBackClick = navigateToTasks,
+        onNavigateToTasks = navigateToTasks,
         viewModel = viewModel,
     )
 }
@@ -127,6 +144,10 @@ fun CreateStudyPlanScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
+
+    BackHandler {
+        onBackClick()
+    }
 
     LaunchedEffect(Unit) {
         viewModel.events.collectLatest { event ->
@@ -145,6 +166,18 @@ fun CreateStudyPlanScreen(
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
         Scaffold(
             containerColor = PlanBg,
+            topBar = {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .statusBarsPadding(),
+                    color = PlanBg,
+                ) {
+                    CreatePlanTopBar(
+                        onBackClick = onBackClick,
+                    )
+                }
+            },
             bottomBar = {
                 // Bottom Fixed Action Bar with navigationBarsPadding
                 Surface(
@@ -217,19 +250,11 @@ fun CreateStudyPlanScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .statusBarsPadding()
                     .testTag("create_study_plan_lazy_column"),
-                contentPadding = PaddingValues(top = 2.dp, bottom = 20.dp),
+                contentPadding = PaddingValues(top = 4.dp, bottom = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                // 1. Top Header with Back button and centered title (Subtitle removed per instruction 1)
-                item(key = "top_bar") {
-                    CreatePlanTopBar(
-                        onBackClick = onBackClick,
-                    )
-                }
-
-                // 2. Section 1: Grade & Book Selection (پایه و کتاب) with minimal book names
+                // 1. Section 1: Grade & Book Selection (پایه و کتاب) with minimal book names & skeleton loader
                 item(key = "grade_and_book") {
                     GradeAndBookSection(
                         selectedGrade = state.selectedGrade,
@@ -239,29 +264,36 @@ fun CreateStudyPlanScreen(
                         subjects = state.subjects,
                         selectedSubjectId = state.selectedSubjectId,
                         onSubjectSelected = { viewModel.selectSubject(it) },
+                        isLoading = state.isLoadingCatalog,
                     )
                 }
 
-                // 3. Section 2: Chapter & Topics Selection (Multi-block support per instruction 5)
-                items(
-                    items = state.chapterBlocks,
-                    key = { it.blockId },
-                ) { block ->
-                    ChapterBlockCard(
-                        subject = state.selectedSubject,
-                        block = block,
-                        canDelete = state.chapterBlocks.size > 1,
-                        onDeleteBlock = { viewModel.removeChapterBlock(block.blockId) },
-                        onChapterSelected = { chapterId ->
-                            viewModel.selectChapterForBlock(block.blockId, chapterId)
-                        },
-                        onTopicToggle = { topicId ->
-                            viewModel.toggleTopicForBlock(block.blockId, topicId)
-                        },
-                    )
+                // 2. Section 2: Chapter & Topics Selection (Multi-block support & ChapterBlockSkeleton when fetching)
+                if (state.isLoadingCatalog) {
+                    item(key = "chapter_skeleton") {
+                        ChapterBlockSkeleton()
+                    }
+                } else {
+                    items(
+                        items = state.chapterBlocks,
+                        key = { it.blockId },
+                    ) { block ->
+                        ChapterBlockCard(
+                            subject = state.selectedSubject,
+                            block = block,
+                            canDelete = state.chapterBlocks.size > 1,
+                            onDeleteBlock = { viewModel.removeChapterBlock(block.blockId) },
+                            onChapterSelected = { chapterId ->
+                                viewModel.selectChapterForBlock(block.blockId, chapterId)
+                            },
+                            onTopicToggle = { topicId ->
+                                viewModel.toggleTopicForBlock(block.blockId, topicId)
+                            },
+                        )
+                    }
                 }
 
-                // 4. "اضافه کردن فصل" Action Button (Adds a new chapter block box below)
+                // 3. "اضافه کردن فصل" Action Button (Adds a new chapter block box below)
                 item(key = "add_chapter_action") {
                     Box(
                         modifier = Modifier
@@ -303,7 +335,7 @@ fun CreateStudyPlanScreen(
                     }
                 }
 
-                // 5. Section 3: Study Periods (دوره‌های مطالعه)
+                // 4. Section 3: Study Periods (دوره‌های مطالعه)
                 item(key = "study_periods") {
                     StudyPeriodsSection(
                         periodCount = state.periodCount,
@@ -312,7 +344,7 @@ fun CreateStudyPlanScreen(
                     )
                 }
 
-                // 6. Section 4: Manual Timing & Capsule Sliders (زمان‌بندی دستی per instructions 6 & 7)
+                // 5. Section 4: Manual Timing & Capsule Sliders (زمان‌بندی دستی)
                 item(key = "timing_section") {
                     TimingSection(
                         isManualTiming = state.isManualTiming,
@@ -323,6 +355,16 @@ fun CreateStudyPlanScreen(
                         onBreakDurationChange = { viewModel.setBreakDuration(it) },
                     )
                 }
+            }
+
+            if (state.isSummaryModalVisible) {
+                StudyPlanSummaryBottomSheet(
+                    state = state,
+                    onDismiss = { viewModel.hideSummaryModal() },
+                    onConfirmSubmit = {
+                        viewModel.confirmAndSubmitPlan(onSuccess = onNavigateToTasks)
+                    },
+                )
             }
         }
     }
@@ -374,6 +416,98 @@ fun CreatePlanTopBar(
 }
 
 @Composable
+fun BookItemSkeleton() {
+    Surface(
+        modifier = Modifier
+            .height(40.dp)
+            .width(72.dp),
+        shape = RoundedCornerShape(12.dp),
+        color = Color(0xFFF1F5F9),
+        border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .shimmerEffect(RoundedCornerShape(12.dp)),
+        )
+    }
+}
+
+@Composable
+fun ChapterBlockSkeleton() {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .shadow(1.dp, RoundedCornerShape(22.dp), spotColor = Color(0x0D000000)),
+        shape = RoundedCornerShape(22.dp),
+        color = Color.White,
+        border = BorderStroke(1.dp, PlanCardBorder),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+        ) {
+            // Header Row Skeleton
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(20.dp)
+                            .shimmerEffect(CircleShape),
+                    )
+                    Box(
+                        modifier = Modifier
+                            .width(110.dp)
+                            .height(18.dp)
+                            .shimmerEffect(RoundedCornerShape(6.dp)),
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Chapter Dropdown Field Skeleton
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .shimmerEffect(RoundedCornerShape(14.dp)),
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Topics preview skeleton pills
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(96.dp)
+                        .height(34.dp)
+                        .shimmerEffect(RoundedCornerShape(10.dp)),
+                )
+                Box(
+                    modifier = Modifier
+                        .width(120.dp)
+                        .height(34.dp)
+                        .shimmerEffect(RoundedCornerShape(10.dp)),
+                )
+            }
+        }
+    }
+}
+
+@Composable
 fun GradeAndBookSection(
     selectedGrade: String,
     selectedGradeName: String,
@@ -382,6 +516,7 @@ fun GradeAndBookSection(
     subjects: List<SubjectVisualItem>,
     selectedSubjectId: String,
     onSubjectSelected: (String) -> Unit,
+    isLoading: Boolean = false,
 ) {
     var isGradeMenuExpanded by remember { mutableStateOf(false) }
 
@@ -479,25 +614,62 @@ fun GradeAndBookSection(
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        // Horizontal Subject Cards Row with Minimal Names (Instruction 2)
-        LazyRow(
-            modifier = Modifier
-                .fillMaxWidth()
-                .testTag("subjects_horizontal_row"),
-            contentPadding = PaddingValues(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            items(subjects, key = { it.id }) { subject ->
-                val isSelected = subject.id == selectedSubjectId
-                SubjectCardItem(
-                    subject = subject,
-                    isSelected = isSelected,
-                    onClick = { onSubjectSelected(subject.id) },
-                )
+        if (isLoading) {
+            // Skeleton loader for books row
+            LazyRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("subjects_skeleton_row"),
+                contentPadding = PaddingValues(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                items(5) {
+                    BookItemSkeleton()
+                }
+            }
+        } else {
+            // Horizontal Subject Cards Row with Minimal Names
+            LazyRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("subjects_horizontal_row"),
+                contentPadding = PaddingValues(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                items(subjects, key = { it.id }) { subject ->
+                    val isSelected = subject.id == selectedSubjectId
+                    SubjectCardItem(
+                        subject = subject,
+                        isSelected = isSelected,
+                        onClick = { onSubjectSelected(subject.id) },
+                    )
+                }
             }
         }
     }
 }
+
+fun formatMinimalChapterName(index: Int, rawName: String): String {
+    val persianIndex = (index + 1).toPersianNumber()
+    val cleaned = rawName
+        .replace(Regex("^فصل\\s*[^:]+:\\s*"), "")
+        .replace(Regex("^فصل\\s*\\d+\\s*:?\\s*"), "")
+        .replace(Regex("^فصل\\s*[\\u06F0-\\u06F9]+\\s*:?\\s*"), "")
+        .replace(Regex("^فصل\\s*اول\\s*:?\\s*"), "")
+        .replace(Regex("^فصل\\s*دوم\\s*:?\\s*"), "")
+        .replace(Regex("^فصل\\s*سوم\\s*:?\\s*"), "")
+        .replace(Regex("^فصل\\s*چهارم\\s*:?\\s*"), "")
+        .replace(Regex("^فصل\\s*پنجم\\s*:?\\s*"), "")
+        .replace(Regex("^فصل\\s*ششم\\s*:?\\s*"), "")
+        .replace(Regex("^فصل\\s*هفتم\\s*:?\\s*"), "")
+        .replace(Regex("^فصل\\s*هشتم\\s*:?\\s*"), "")
+        .replace(Regex("^فصل\\s*نهم\\s*:?\\s*"), "")
+        .replace(Regex("^فصل\\s*دهم\\s*:?\\s*"), "")
+        .trim()
+    return if (cleaned.isNotBlank()) "$persianIndex: $cleaned" else persianIndex
+}
+
+fun formatPersianChapterName(index: Int, rawName: String): String = formatMinimalChapterName(index, rawName)
 
 @Composable
 fun SubjectCardItem(
@@ -505,32 +677,29 @@ fun SubjectCardItem(
     isSelected: Boolean,
     onClick: () -> Unit,
 ) {
-    val borderColor = if (isSelected) PlanPurple else PlanCardBorder
-    val backgroundColor = if (isSelected) Color(0xFFF5F3FF) else Color.White
+    val borderColor = if (isSelected) PlanPurple else Color(0xFFE2E8F0)
+    val backgroundColor = if (isSelected) Color(0xFFF5F3FF) else Color(0xFFF8F9FE)
 
     Surface(
         modifier = Modifier
-            .width(100.dp)
-            .height(112.dp)
-            .clip(RoundedCornerShape(18.dp))
+            .height(40.dp)
+            .clip(RoundedCornerShape(12.dp))
             .clickable { onClick() }
             .testTag("subject_card_${subject.id}"),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(12.dp),
         color = backgroundColor,
-        border = BorderStroke(if (isSelected) 1.8.dp else 1.dp, borderColor),
-        shadowElevation = if (isSelected) 2.dp else 0.dp,
+        border = BorderStroke(if (isSelected) 1.5.dp else 1.dp, borderColor),
     ) {
-        Box(
+        Row(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(8.dp),
+                .padding(horizontal = 14.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            // Selected Check badge at Top-Start in RTL
             if (isSelected) {
                 Box(
                     modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .size(18.dp)
+                        .size(16.dp)
                         .clip(CircleShape)
                         .background(PlanPurple),
                     contentAlignment = Alignment.Center,
@@ -539,46 +708,20 @@ fun SubjectCardItem(
                         imageVector = Icons.Default.Check,
                         contentDescription = null,
                         tint = Color.White,
-                        modifier = Modifier.size(11.dp),
+                        modifier = Modifier.size(10.dp),
                     )
                 }
             }
 
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                // Subject Icon inside circular container
-                Box(
-                    modifier = Modifier
-                        .size(42.dp)
-                        .clip(CircleShape)
-                        .background(Color(subject.tintHex).copy(alpha = 0.12f)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        painter = painterResource(id = subject.drawableRes),
-                        contentDescription = subject.minimalName,
-                        tint = Color(subject.tintHex),
-                        modifier = Modifier.size(22.dp),
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Book name only (no fieldName subtitle underneath)
-                Text(
-                    text = subject.minimalName,
-                    color = PlanNavy,
-                    fontFamily = IranSansFontFamily,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
-                    textAlign = TextAlign.Center,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
+            Text(
+                text = subject.minimalName,
+                color = if (isSelected) PlanPurple else PlanNavy,
+                fontFamily = IranSansFontFamily,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                fontSize = 13.sp,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+            )
         }
     }
 }
@@ -595,6 +738,7 @@ fun ChapterBlockCard(
     val chapters = subject?.chapters ?: emptyList()
     val chapter = chapters.firstOrNull { it.id == block.selectedChapterId }
     var isChapterMenuOpen by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
 
     Surface(
         modifier = Modifier
@@ -657,121 +801,197 @@ fun ChapterBlockCard(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Chapter Selector Button (Click opens inline dropdown directly below)
+            // Chapter Selector Button with Floating Overlay Dropdown (No parent layout push)
             val arrowRotation by animateFloatAsState(
                 targetValue = if (isChapterMenuOpen) 180f else 0f,
                 label = "arrow_rotation",
             )
 
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .clickable {
-                        if (chapters.isNotEmpty()) {
-                            isChapterMenuOpen = !isChapterMenuOpen
-                        }
-                    }
-                    .testTag("chapter_selector_button_${block.blockId}"),
-                shape = RoundedCornerShape(14.dp),
-                color = Color(0xFFF8F9FE),
-                border = BorderStroke(1.dp, if (isChapterMenuOpen) PlanPurple else Color(0xFFE2E8F0)),
+            Box(
+                modifier = Modifier.fillMaxWidth(),
             ) {
-                Row(
+                Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 14.dp, vertical = 11.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                        .clip(RoundedCornerShape(14.dp))
+                        .clickable {
+                            if (chapters.isNotEmpty()) {
+                                isChapterMenuOpen = !isChapterMenuOpen
+                                searchQuery = ""
+                            }
+                        }
+                        .testTag("chapter_selector_button_${block.blockId}"),
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color(0xFFF8F9FE),
+                    border = BorderStroke(1.dp, if (isChapterMenuOpen) PlanPurple else Color(0xFFE2E8F0)),
                 ) {
-                    Text(
-                        text = chapter?.name ?: "انتخاب فصل",
-                        color = if (chapter != null) PlanNavy else PlanMuted,
-                        fontFamily = IranSansFontFamily,
-                        fontWeight = if (chapter != null) FontWeight.Medium else FontWeight.Normal,
-                        fontSize = 13.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f),
-                    )
-
-                    Icon(
-                        imageVector = Icons.Default.KeyboardArrowDown,
-                        contentDescription = "انتخاب فصل",
-                        tint = PlanPurple,
-                        modifier = Modifier
-                            .size(18.dp)
-                            .rotate(arrowRotation),
-                    )
-                }
-            }
-
-            // Inline Expandable Chapter List (Opens directly below selector, strict RTL, bounded height, zero system border)
-            AnimatedVisibility(
-                visible = isChapterMenuOpen,
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically(),
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    Surface(
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(max = 180.dp),
-                        shape = RoundedCornerShape(14.dp),
-                        color = Color(0xFFFAFAFE),
-                        border = BorderStroke(1.dp, PlanPurple.copy(alpha = 0.25f)),
+                            .padding(horizontal = 14.dp, vertical = 11.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-                        LazyColumn(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                        ) {
-                            items(chapters, key = { it.id }) { ch ->
-                                val isSelected = ch.id == chapter?.id
-                                Surface(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .clickable {
-                                            onChapterSelected(ch.id)
-                                            isChapterMenuOpen = false
-                                        },
-                                    shape = RoundedCornerShape(10.dp),
-                                    color = if (isSelected) PlanPurple.copy(alpha = 0.10f) else Color.Transparent,
-                                ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 12.dp, vertical = 10.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                    ) {
-                                        Text(
-                                            text = ch.name,
-                                            fontFamily = IranSansFontFamily,
-                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                            color = if (isSelected) PlanPurple else PlanNavy,
-                                            fontSize = 12.5.sp,
-                                            textAlign = TextAlign.Start,
-                                            modifier = Modifier.weight(1f),
-                                        )
+                        val selectedIndex = chapters.indexOfFirst { it.id == block.selectedChapterId }
+                        val displayName = if (chapter != null && selectedIndex >= 0) {
+                            formatMinimalChapterName(selectedIndex, chapter.name)
+                        } else {
+                            "انتخاب فصل"
+                        }
 
-                                        if (isSelected) {
-                                            Icon(
-                                                imageVector = Icons.Default.Check,
-                                                contentDescription = null,
-                                                tint = PlanPurple,
-                                                modifier = Modifier.size(16.dp),
-                                            )
-                                        }
+                        Text(
+                            text = displayName,
+                            color = if (chapter != null) PlanNavy else PlanMuted,
+                            fontFamily = IranSansFontFamily,
+                            fontWeight = if (chapter != null) FontWeight.Medium else FontWeight.Normal,
+                            fontSize = 13.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
+                            textAlign = TextAlign.Right,
+                        )
+
+                        Icon(
+                            imageVector = Icons.Default.KeyboardArrowDown,
+                            contentDescription = "انتخاب فصل",
+                            tint = PlanPurple,
+                            modifier = Modifier
+                                .size(18.dp)
+                                .rotate(arrowRotation),
+                        )
+                    }
+                }
+
+                // Floating Overlay Dropdown Menu with Search
+                DropdownMenu(
+                    expanded = isChapterMenuOpen,
+                    onDismissRequest = { isChapterMenuOpen = false },
+                    modifier = Modifier
+                        .fillMaxWidth(0.88f)
+                        .heightIn(max = 260.dp)
+                        .background(Color.White, RoundedCornerShape(14.dp))
+                        .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(14.dp)),
+                ) {
+                    if (chapters.size > 2) {
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            placeholder = {
+                                Text(
+                                    text = "جستجوی فصل...",
+                                    fontFamily = IranSansFontFamily,
+                                    fontSize = 12.sp,
+                                    color = PlanMuted,
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Search,
+                                    contentDescription = null,
+                                    tint = PlanMuted,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                            },
+                            trailingIcon = {
+                                if (searchQuery.isNotBlank()) {
+                                    IconButton(
+                                        onClick = { searchQuery = "" },
+                                        modifier = Modifier.size(24.dp),
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = "پاک کردن",
+                                            tint = PlanMuted,
+                                            modifier = Modifier.size(14.dp),
+                                        )
                                     }
                                 }
-                            }
+                            },
+                            singleLine = true,
+                            shape = RoundedCornerShape(10.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = PlanPurple,
+                                unfocusedBorderColor = Color(0xFFE2E8F0),
+                                focusedContainerColor = Color(0xFFF8F9FE),
+                                unfocusedContainerColor = Color(0xFFF8F9FE),
+                            ),
+                            textStyle = TextStyle(
+                                fontFamily = IranSansFontFamily,
+                                fontSize = 12.sp,
+                                textAlign = TextAlign.Right,
+                                color = PlanNavy,
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp, vertical = 6.dp)
+                                .testTag("chapter_search_input_${block.blockId}"),
+                        )
+                    }
+
+                    val filteredChapters = remember(chapters, searchQuery) {
+                        if (searchQuery.isBlank()) {
+                            chapters.mapIndexed { idx, ch -> Triple(idx, ch, formatMinimalChapterName(idx, ch.name)) }
+                        } else {
+                            val q = searchQuery.trim().lowercase()
+                            chapters.mapIndexed { idx, ch -> Triple(idx, ch, formatMinimalChapterName(idx, ch.name)) }
+                                .filter { (idx, ch, title) ->
+                                    title.lowercase().contains(q) ||
+                                        ch.name.lowercase().contains(q) ||
+                                        (idx + 1).toString().contains(q) ||
+                                        (idx + 1).toPersianNumber().contains(q)
+                                }
+                        }
+                    }
+
+                    if (filteredChapters.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = "فصلی یافت نشد",
+                                fontFamily = IranSansFontFamily,
+                                fontSize = 12.sp,
+                                color = PlanMuted,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
+                    } else {
+                        filteredChapters.forEach { (index, ch, formattedTitle) ->
+                            val isSelected = ch.id == chapter?.id
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        text = formattedTitle,
+                                        fontFamily = IranSansFontFamily,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (isSelected) PlanPurple else PlanNavy,
+                                        fontSize = 12.5.sp,
+                                        textAlign = TextAlign.Right,
+                                        modifier = Modifier.fillMaxWidth(),
+                                    )
+                                },
+                                trailingIcon = {
+                                    if (isSelected) {
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = null,
+                                            tint = PlanPurple,
+                                            modifier = Modifier.size(16.dp),
+                                        )
+                                    }
+                                },
+                                onClick = {
+                                    onChapterSelected(ch.id)
+                                    isChapterMenuOpen = false
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(if (isSelected) PlanPurple.copy(alpha = 0.08f) else Color.Transparent)
+                                    .testTag("chapter_item_${ch.id}"),
+                            )
                         }
                     }
                 }
@@ -1052,14 +1272,14 @@ fun TimingSection(
             .testTag("timing_card"),
         shape = RoundedCornerShape(22.dp),
         color = Color.White,
-        border = BorderStroke(1.dp, PlanCardBorder),
+        border = null,
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = if (isManualTiming) 12.dp else 8.dp),
+                .padding(horizontal = 14.dp, vertical = if (isManualTiming) 10.dp else 6.dp),
         ) {
-            // Header Row: Clock Icon + "زمان‌بندی" + Toggle "زمان‌بندی دستی" (Instruction 7)
+            // Header Row: Clock Icon + "زمان‌بندی" + Toggle "زمان‌بندی دستی"
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -1068,11 +1288,11 @@ fun TimingSection(
                 // Right: Clock + Title
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(26.dp)
+                            .size(22.dp)
                             .clip(CircleShape)
                             .background(Color(0xFFF3E8FF)),
                         contentAlignment = Alignment.Center,
@@ -1081,7 +1301,7 @@ fun TimingSection(
                             imageVector = Icons.Outlined.AccessTime,
                             contentDescription = null,
                             tint = Color(0xFF6C5CE7),
-                            modifier = Modifier.size(16.dp),
+                            modifier = Modifier.size(13.dp),
                         )
                     }
                     Text(
@@ -1089,20 +1309,20 @@ fun TimingSection(
                         color = PlanNavy,
                         fontFamily = IranSansFontFamily,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp,
+                        fontSize = 14.sp,
                     )
                 }
 
-                // Left: Toggle "زمان‌بندی دستی" (Instruction 7)
+                // Left: Toggle "زمان‌بندی دستی"
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     Text(
                         text = stringResource(id = R.string.create_plan_manual_timing),
                         color = PlanMuted,
                         fontFamily = IranSansFontFamily,
-                        fontSize = 11.5.sp,
+                        fontSize = 11.sp,
                     )
                     Switch(
                         checked = isManualTiming,
@@ -1112,8 +1332,12 @@ fun TimingSection(
                             checkedTrackColor = Color(0xFF6C5CE7),
                             uncheckedThumbColor = Color.White,
                             uncheckedTrackColor = Color(0xFFCBD5E1),
+                            checkedBorderColor = Color.Transparent,
+                            uncheckedBorderColor = Color.Transparent,
                         ),
-                        modifier = Modifier.testTag("timing_manual_switch"),
+                        modifier = Modifier
+                            .scale(0.72f)
+                            .testTag("timing_manual_switch"),
                     )
                 }
             }
@@ -1430,6 +1654,322 @@ fun DonutStepSlider(
                         fontWeight = FontWeight.Medium,
                         textAlign = TextAlign.Center,
                     )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun StudyPlanSummaryBottomSheet(
+    state: CreateStudyPlanUiState,
+    onDismiss: () -> Unit,
+    onConfirmSubmit: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = Color.White,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        dragHandle = {
+            Box(
+                modifier = Modifier
+                    .padding(vertical = 12.dp)
+                    .width(40.dp)
+                    .height(4.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFE2E8F0)),
+            )
+        },
+    ) {
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 32.dp)
+                    .testTag("study_plan_summary_modal"),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(PlanPurple.copy(alpha = 0.12f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Outlined.Assignment,
+                            contentDescription = null,
+                            tint = PlanPurple,
+                            modifier = Modifier.size(24.dp),
+                        )
+                    }
+                    Column {
+                        Text(
+                            text = "خلاصه برنامه مطالعاتی",
+                            fontFamily = IranSansFontFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 17.sp,
+                            color = PlanNavy,
+                        )
+                        Text(
+                            text = "پیش‌نمایش و تایید نهایی قبل از ذخیره",
+                            fontFamily = IranSansFontFamily,
+                            fontSize = 12.sp,
+                            color = PlanMuted,
+                        )
+                    }
+                }
+
+                HorizontalDivider(color = PlanCardBorder, thickness = 1.dp)
+
+                // Info Cards
+                // 1. Grade & Major
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    color = Color(0xFFF8F9FE),
+                    border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.School,
+                                contentDescription = null,
+                                tint = PlanPurple,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Text(
+                                text = "مقطع و رشته:",
+                                fontFamily = IranSansFontFamily,
+                                fontSize = 12.5.sp,
+                                color = PlanMuted,
+                            )
+                        }
+                        Text(
+                            text = "${state.selectedGradeName} • ${state.userMajorName}",
+                            fontFamily = IranSansFontFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            color = PlanNavy,
+                        )
+                    }
+                }
+
+                // 2. Selected Book & Chapters Summary
+                val selectedSubject = state.selectedSubject
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    color = Color(0xFFF8F9FE),
+                    border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Outlined.MenuBook,
+                                    contentDescription = null,
+                                    tint = PlanPurple,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                                Text(
+                                    text = "کتاب انتخابی:",
+                                    fontFamily = IranSansFontFamily,
+                                    fontSize = 12.5.sp,
+                                    color = PlanMuted,
+                                )
+                            }
+                            Text(
+                                text = selectedSubject?.name ?: selectedSubject?.minimalName ?: "-",
+                                fontFamily = IranSansFontFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.5.sp,
+                                color = PlanPurple,
+                            )
+                        }
+
+                        // Selected chapters & topics list
+                        state.chapterBlocks.forEachIndexed { blockIdx, block ->
+                            val chIndex = selectedSubject?.chapters?.indexOfFirst { it.id == block.selectedChapterId } ?: -1
+                            val ch = selectedSubject?.chapters?.firstOrNull { it.id == block.selectedChapterId }
+                            if (ch != null) {
+                                val chTitle = formatMinimalChapterName(if (chIndex >= 0) chIndex else blockIdx, ch.name)
+                                val selectedTopics = ch.topics.filter { block.selectedTopicIds.contains(it.id) }
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(Color.White, RoundedCornerShape(10.dp))
+                                        .padding(10.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                                ) {
+                                    Text(
+                                        text = "فصل: $chTitle",
+                                        fontFamily = IranSansFontFamily,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp,
+                                        color = PlanNavy,
+                                    )
+                                    if (selectedTopics.isNotEmpty()) {
+                                        Text(
+                                            text = selectedTopics.joinToString("، ") { it.name },
+                                            fontFamily = IranSansFontFamily,
+                                            fontSize = 11.5.sp,
+                                            color = PlanMuted,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 3. Timing & Period Details
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    color = Color(0xFFF8F9FE),
+                    border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(
+                                text = "${state.periodCount.toPersianNumber()} پارت مطالعه (${state.studyDurationMinutes.toPersianNumber()} دقیقه)",
+                                fontFamily = IranSansFontFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                                color = PlanNavy,
+                            )
+                            Text(
+                                text = "مجموع زمان: ${state.totalHours.toPersianNumber()} ساعت و ${state.remainingMinutes.toPersianNumber()} دقیقه",
+                                fontFamily = IranSansFontFamily,
+                                fontSize = 11.5.sp,
+                                color = PlanMuted,
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(PlanPurple.copy(alpha = 0.1f))
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                        ) {
+                            Text(
+                                text = "${state.selectedTopicCount.toPersianNumber()} مبحث",
+                                fontFamily = IranSansFontFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                color = PlanPurple,
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Action Buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    // Back/Edit Button
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(50.dp)
+                            .testTag("summary_modal_edit_button"),
+                        shape = RoundedCornerShape(14.dp),
+                        border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
+                        enabled = !state.isSubmitting,
+                    ) {
+                        Text(
+                            text = "ویرایش و بازگشت",
+                            fontFamily = IranSansFontFamily,
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 13.5.sp,
+                            color = PlanNavy,
+                        )
+                    }
+
+                    // Confirm & Submit Button
+                    Button(
+                        onClick = onConfirmSubmit,
+                        modifier = Modifier
+                            .weight(1.3f)
+                            .height(50.dp)
+                            .testTag("summary_modal_confirm_button"),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = PlanPurple),
+                        enabled = !state.isSubmitting,
+                    ) {
+                        if (state.isSubmitting) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp,
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "در حال ارسال...",
+                                fontFamily = IranSansFontFamily,
+                                fontSize = 13.5.sp,
+                                color = Color.White,
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "تایید و ثبت نهایی",
+                                fontFamily = IranSansFontFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.5.sp,
+                                color = Color.White,
+                            )
+                        }
+                    }
                 }
             }
         }
