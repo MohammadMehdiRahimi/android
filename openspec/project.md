@@ -67,7 +67,8 @@ All screen-specific logic (Composable screens, subcomponents, ViewModels, and UI
 │   │   │   ├── core/          # Shared components (AppBackground, Shimmer, LatexText)
 │   │   │   ├── features/      # Feature-First Modules
 │   │   │   │   ├── auth/      # Auth sub-features
-│   │   │   │   │   └── login/ # LoginScreen, LoginViewModel, LoginUiState
+│   │   │   │   │   ├── login/ # LoginScreen, LoginViewModel, LoginUiState
+│   │   │   │   │   └── otp/   # VerifyOtpScreen, VerifyOtpViewModel, VerifyOtpUiState
 │   │   │   │   ├── academicleaderboard/
 │   │   │   │   ├── academicreport/
 │   │   │   │   ├── dashboard/
@@ -95,12 +96,18 @@ All screen-specific logic (Composable screens, subcomponents, ViewModels, and UI
 │   ├── GreetingScreenshotTest.kt
 │   ├── network/               # Adapter & network parsing tests
 │   └── ui/features/
-│       └── auth/login/        # LoginViewModelTest, LoginScreenTest
+│       └── auth/
+│           ├── login/         # LoginViewModelTest, LoginScreenTest
+│           └── otp/           # VerifyOtpViewModelTest, VerifyOtpScreenTest
 └── ...
 /openspec/                     # Specification-Driven Development
 ├── project.md                 # Global Blueprint (this file)
 └── changes/                   # Feature-specific proposals, designs, and tasks
-    └── login_feature/
+    ├── login_feature/
+    │   ├── proposal.md
+    │   ├── design.md
+    │   └── tasks.md
+    └── verify_otp_feature/
         ├── proposal.md
         ├── design.md
         └── tasks.md

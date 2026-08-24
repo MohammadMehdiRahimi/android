@@ -3,12 +3,11 @@ package com.example.ui.features.auth.otp
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.data.repository.AuthRepositoryImpl
+import com.example.domain.usecase.SendOtpUseCase
+import com.example.domain.usecase.VerifyOtpUseCase
 import com.example.network.ApiClient
 import com.example.network.NetworkResult
-import com.example.network.OtpRequestDto
-import com.example.network.OtpVerifyDto
-import com.example.network.TokenManager
-import com.example.network.safeApiCall
 import com.example.ui.screens.convertPersianToEnglishDigits
 import com.example.ui.screens.globalUserPhoneNumber
 import com.example.ui.screens.toPersianDigits
@@ -23,6 +22,13 @@ import kotlinx.coroutines.launch
 class VerifyOtpViewModel(
     initialPhone: String = ""
 ) : ViewModel() {
+
+    private val authRepository = AuthRepositoryImpl(
+        apiService = ApiClient.apiService,
+        tokenManager = ApiClient.getTokenManager()!!
+    )
+    private val sendOtpUseCase = SendOtpUseCase(authRepository)
+    private val verifyOtpUseCase = VerifyOtpUseCase(authRepository)
 
     private val _uiState = MutableStateFlow(VerifyOtpUiState())
     val uiState: StateFlow<VerifyOtpUiState> = _uiState.asStateFlow()
@@ -105,35 +111,38 @@ class VerifyOtpViewModel(
         _uiState.update { it.copy(isResending = true, errorMessage = null) }
 
         viewModelScope.launch {
-            val result = safeApiCall {
-                ApiClient.apiService.requestOtp(OtpRequestDto(phone = phone))
-            }
-            when (result) {
-                is NetworkResult.Success -> {
-                    val expiresIn = result.data.body?.expiresIn ?: 120
-                    _uiState.update {
-                        it.copy(
-                            isResending = false,
-                            errorMessage = null
-                        )
+            sendOtpUseCase.execute(phone).collect { result ->
+                when (result) {
+                    is NetworkResult.Success -> {
+                        _uiState.update {
+                            it.copy(
+                                isResending = false,
+                                errorMessage = null
+                            )
+                        }
+                        startCountdownTimer(120) // Default to 120s
+                        onSuccess()
                     }
-                    startCountdownTimer(expiresIn)
-                    onSuccess()
-                }
-                is NetworkResult.Error -> {
-                    _uiState.update {
-                        it.copy(
-                            isResending = false,
-                            errorMessage = result.message ?: "خطا در ارسال مجدد کد تأیید"
-                        )
+                    is NetworkResult.Error -> {
+                        val errorMsg = when (result.code) {
+                            429 -> "تعداد درخواست‌ها بیش از حد مجاز است. لطفاً کمی صبر کنید."
+                            400 -> "شماره موبایل وارد شده نامعتبر است."
+                            else -> result.message ?: "خطا در ارسال مجدد کد تأیید"
+                        }
+                        _uiState.update {
+                            it.copy(
+                                isResending = false,
+                                errorMessage = errorMsg
+                            )
+                        }
                     }
-                }
-                is NetworkResult.Exception -> {
-                    _uiState.update {
-                        it.copy(
-                            isResending = false,
-                            errorMessage = "خطا در برقراری ارتباط با سرور. لطفاً اتصال اینترنت خود را بررسی کنید."
-                        )
+                    is NetworkResult.Exception -> {
+                        _uiState.update {
+                            it.copy(
+                                isResending = false,
+                                errorMessage = "خطا در برقراری ارتباط با سرور. لطفاً اتصال اینترنت خود را بررسی کنید."
+                            )
+                        }
                     }
                 }
             }
@@ -158,82 +167,76 @@ class VerifyOtpViewModel(
         _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
         viewModelScope.launch {
-            val result = safeApiCall {
-                ApiClient.apiService.verifyOtp(
-                    OtpVerifyDto(
-                        phone = phone,
-                        otp = code,
-                        deviceType = "ANDROID"
-                    )
-                )
-            }
-
-            when (result) {
-                is NetworkResult.Success -> {
-                    val authData = result.data.body
-                    if (authData?.isNew == true && !authData.registrationToken.isNullOrBlank()) {
-                        _uiState.update {
-                            it.copy(
-                                isLoading = false,
-                                isVerificationSuccess = true,
-                                isNewUser = true,
-                                registrationToken = authData.registrationToken
+            verifyOtpUseCase.execute(phone, code).collect { result ->
+                when (result) {
+                    is NetworkResult.Success -> {
+                        val authData = result.data.body
+                        if (authData?.isNew == true && !authData.registrationToken.isNullOrBlank()) {
+                            _uiState.update {
+                                it.copy(
+                                    isLoading = false,
+                                    isVerificationSuccess = true,
+                                    isNewUser = true,
+                                    registrationToken = authData.registrationToken
+                                )
+                            }
+                            onSuccess(true, authData.registrationToken)
+                        } else if (authData != null && !authData.accessToken.isNullOrBlank()) {
+                            // authData user details can be saved
+                            val tokenManager = ApiClient.getTokenManager()!!
+                            tokenManager.saveUserData(
+                                id = authData.user?.id,
+                                phone = authData.user?.phone ?: phone,
+                                role = authData.user?.role,
+                                fullName = authData.user?.fullName
                             )
+
+                            val sharedPrefs = context.getSharedPreferences("shetab_onboarding_prefs", Context.MODE_PRIVATE)
+                            sharedPrefs.edit().apply {
+                                putBoolean("is_logged_in", true)
+                                authData.user?.fullName
+                                    ?.takeIf { it.isNotBlank() }
+                                    ?.let { putString("user_name", it.trim()) }
+                            }.apply()
+
+                            _uiState.update {
+                                it.copy(
+                                    isLoading = false,
+                                    isVerificationSuccess = true,
+                                    isNewUser = false
+                                )
+                            }
+                            onSuccess(false, null)
+                        } else {
+                            _uiState.update {
+                                it.copy(
+                                    isLoading = false,
+                                    errorMessage = "پاسخ نامعتبر از سرور"
+                                )
+                            }
                         }
-                        onSuccess(true, authData.registrationToken)
-                    } else if (authData != null && !authData.accessToken.isNullOrBlank()) {
-                        val tokenManager = ApiClient.getTokenManager() ?: TokenManager(context)
-                        tokenManager.saveSession(
-                            authData.accessToken,
-                            authData.accessExpiresAt,
-                            authData.refreshExpiresAt
-                        )
-                        tokenManager.saveUserData(
-                            id = authData.user?.id,
-                            phone = authData.user?.phone ?: phone,
-                            role = authData.user?.role,
-                            fullName = authData.user?.fullName
-                        )
-
-                        val sharedPrefs = context.getSharedPreferences("shetab_onboarding_prefs", Context.MODE_PRIVATE)
-                        sharedPrefs.edit().apply {
-                            putBoolean("is_logged_in", true)
-                            authData.user?.fullName
-                                ?.takeIf { it.isNotBlank() }
-                                ?.let { putString("user_name", it.trim()) }
-                        }.apply()
-
+                    }
+                    is NetworkResult.Error -> {
+                        val errorMsg = when (result.code) {
+                            429 -> "تعداد درخواست‌ها بیش از حد مجاز است. لطفاً کمی صبر کنید."
+                            401 -> "کد وارد شده اشتباه یا منقضی شده است."
+                            400 -> "درخواست نامعتبر است."
+                            else -> result.message ?: "خطا در تایید کد."
+                        }
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
-                                isVerificationSuccess = true,
-                                isNewUser = false
-                            )
-                        }
-                        onSuccess(false, null)
-                    } else {
-                        _uiState.update {
-                            it.copy(
-                                isLoading = false,
-                                errorMessage = "پاسخ نامعتبر از سرور"
+                                errorMessage = errorMsg
                             )
                         }
                     }
-                }
-                is NetworkResult.Error -> {
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            errorMessage = result.message ?: "کد وارد شده اشتباه یا منقضی شده است."
-                        )
-                    }
-                }
-                is NetworkResult.Exception -> {
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            errorMessage = "خطا در ارتباط با سرور. لطفاً اتصال اینترنت خود را بررسی کنید."
-                        )
+                    is NetworkResult.Exception -> {
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                errorMessage = "خطا در ارتباط با سرور. لطفاً اتصال اینترنت خود را بررسی کنید."
+                            )
+                        }
                     }
                 }
             }

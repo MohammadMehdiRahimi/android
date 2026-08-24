@@ -2,10 +2,10 @@ package com.example.ui.features.auth.login
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.data.repository.AuthRepositoryImpl
+import com.example.domain.usecase.SendOtpUseCase
 import com.example.network.ApiClient
 import com.example.network.NetworkResult
-import com.example.network.OtpRequestDto
-import com.example.network.safeApiCall
 import com.example.ui.screens.convertPersianToEnglishDigits
 import com.example.ui.screens.globalUserPhoneNumber
 import com.example.ui.screens.toPersianDigits
@@ -16,6 +16,13 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class LoginViewModel : ViewModel() {
+
+    private val sendOtpUseCase = SendOtpUseCase(
+        AuthRepositoryImpl(
+            apiService = ApiClient.apiService,
+            tokenManager = ApiClient.getTokenManager()!!
+        )
+    )
 
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
@@ -67,35 +74,38 @@ class LoginViewModel : ViewModel() {
         _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
         viewModelScope.launch {
-            val result = safeApiCall {
-                ApiClient.apiService.requestOtp(OtpRequestDto(phone = phone))
-            }
-            when (result) {
-                is NetworkResult.Success -> {
-                    val expiresIn = result.data.body?.expiresIn ?: 120
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            isOtpSent = true,
-                            expiresIn = expiresIn
-                        )
+            sendOtpUseCase.execute(phone).collect { result ->
+                when (result) {
+                    is NetworkResult.Success -> {
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                isOtpSent = true,
+                                expiresIn = 120 // Default to 120s if not specified in response
+                            )
+                        }
+                        onSuccess(phone)
                     }
-                    onSuccess(phone)
-                }
-                is NetworkResult.Error -> {
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            errorMessage = result.message ?: "خطا در ارسال کد تأیید"
-                        )
+                    is NetworkResult.Error -> {
+                        val errorMsg = when (result.code) {
+                            429 -> "تعداد درخواست‌ها بیش از حد مجاز است. لطفاً کمی صبر کنید."
+                            400 -> "شماره موبایل وارد شده نامعتبر است."
+                            else -> result.message ?: "خطا در ارسال کد تأیید"
+                        }
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                errorMessage = errorMsg
+                            )
+                        }
                     }
-                }
-                is NetworkResult.Exception -> {
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            errorMessage = "خطا در برقراری ارتباط با سرور. لطفاً اتصال اینترنت خود را بررسی کنید."
-                        )
+                    is NetworkResult.Exception -> {
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                errorMessage = "خطا در برقراری ارتباط با سرور. لطفاً اتصال اینترنت خود را بررسی کنید."
+                            )
+                        }
                     }
                 }
             }
