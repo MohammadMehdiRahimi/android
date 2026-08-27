@@ -52,13 +52,14 @@ object ApiClient {
         val authInterceptor = AuthInterceptor(tm)
         val cookieJar = PersistentCookieJar(appContext)
         this.persistentCookieJar = cookieJar
+        SessionManager.init(appContext, tm, cookieJar)
         val tokenAuthenticator = TokenAuthenticator(tm, cookieJar) { baseUrl }
 
         // 3. Response Interceptor (Axios Response Interceptor equivalent)
         val responseInterceptor = ResponseInterceptor(
             tokenManager = tm,
             onUnauthorized = {
-                cookieJar.clear()
+                SessionManager.handleUnauthorized()
             }
         )
 
@@ -78,6 +79,12 @@ object ApiClient {
 
         // Build Moshi for Kotlin Data Class JSON conversion
         val moshi = Moshi.Builder()
+            .add(DailyStudyTasksResponseJsonAdapter.Factory)
+            .add(ManualStudyTaskResponseJsonAdapter.Factory)
+            .add(StudyExecutionResponseJsonAdapter.Factory)
+            .add(StudyTaskCatalogResponseJsonAdapter.Factory)
+            .add(StudyExecutionEventJsonAdapter.Factory)
+            .add(UpdateManualStudyTaskJsonAdapter.Factory)
             .add(MyGroupResponseJsonAdapter.Factory)
             .add(KotlinJsonAdapterFactory())
             .build()
@@ -103,8 +110,7 @@ object ApiClient {
     fun getTokenManager(): TokenManager? = tokenManager
 
     fun clearSession() {
-        tokenManager?.clearToken()
-        persistentCookieJar?.clear()
+        SessionManager.logout()
     }
 
     fun resolveUrl(path: String?): String? {

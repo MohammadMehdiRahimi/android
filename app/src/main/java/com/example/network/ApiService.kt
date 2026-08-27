@@ -71,6 +71,7 @@ interface ApiService {
     @GET("study-tasks/me/catalog") suspend fun getStudyTaskCatalog(): Response<StudyTaskCatalogResponseDto>
     @GET("study-tasks/me") suspend fun getStudyTasks(@Query("date") date: String): Response<DailyStudyTasksResponseDto>
     @POST("study-tasks/me/manual") suspend fun createManualStudyTask(@Body request: CreateManualStudyTaskDto): Response<ManualStudyTaskResponseDto>
+    @PATCH("study-tasks/me/manual/{taskId}") suspend fun updateManualStudyTask(@Path("taskId") taskId: String, @Body request: UpdateManualStudyTaskDto): Response<ManualStudyTaskResponseDto>
     @DELETE("study-tasks/me/manual/{taskId}") suspend fun cancelManualStudyTask(@Path("taskId") taskId: String): Response<SimpleResponseDto>
     @POST("study-execution/me/items/{taskId}/events") suspend fun submitGeneratedStudyEvent(@Path("taskId") taskId: String, @Body request: StudyExecutionEventDto): Response<StudyExecutionResponseDto>
     @POST("study-execution/me/manual-tasks/{taskId}/events") suspend fun submitManualStudyEvent(@Path("taskId") taskId: String, @Body request: StudyExecutionEventDto): Response<StudyExecutionResponseDto>
@@ -432,6 +433,13 @@ data class CreateManualStudyTaskDto(
     val minutesPerPeriod: Int,
 )
 
+data class UpdateManualStudyTaskDto(
+    val topicId: String? = null,
+    val scheduledOn: String? = null,
+    val periodCount: Int? = null,
+    val minutesPerPeriod: Int? = null,
+)
+
 data class ManualStudyTaskBodyDto(
     val id: String,
     val sourceType: String = "MANUAL",
@@ -460,11 +468,15 @@ data class StudyExecutionEventDto(
 )
 
 data class StudyExecutionBodyDto(
-    val id: String,
-    val status: String,
-    val eventSequence: Int,
+    val id: String = "",
+    val manualTaskId: String? = null,
+    val status: String = "",
+    val eventSequence: Int = 0,
     val plannedMinutes: Int = 0,
     val actualSeconds: Int = 0,
+    val persistedActiveSeconds: Int = 0,
+    val timerElapsedSeconds: Int = 0,
+    val pausedSeconds: Int = 0,
     val completionPercent: Int? = null,
     val startedAt: String? = null,
     val activeSinceAt: String? = null,

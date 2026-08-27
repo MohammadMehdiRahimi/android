@@ -44,6 +44,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import android.app.Application
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -56,6 +58,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.R
+import com.example.ui.core.components.NetworkErrorView
+import com.example.ui.core.components.shimmerEffect
 import com.example.ui.theme.IranSansFontFamily
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -63,7 +67,11 @@ import com.example.ui.theme.IranSansFontFamily
 fun StudyPlanScreen(
     navController: NavController,
     onBackClick: (() -> Unit)? = null,
-    viewModel: StudyPlanViewModel = viewModel(),
+    viewModel: StudyPlanViewModel = viewModel(
+        factory = StudyPlanViewModel.provideFactory(
+            LocalContext.current.applicationContext as Application
+        )
+    ),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -87,67 +95,24 @@ fun StudyPlanScreen(
                     .padding(paddingValues)
                     .background(PlanBackground),
             ) {
-                if (state.loading && state.day == null) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .statusBarsPadding(),
-                    ) {
-                        StudyPlanTopHeader(
-                            onNotificationClick = { navController.navigate("notifications") },
-                            unreadNotification = true,
-                        )
-                        StudyPlanSkeletonLoading()
-                    }
-                } else if (state.error != null && state.day == null) {
+                if (state.error != null && state.day == null) {
                     // Error Screen State
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .statusBarsPadding()
-                            .padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.WarningAmber,
-                            contentDescription = null,
-                            tint = PlanOrange,
-                            modifier = Modifier.size(56.dp),
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = state.error ?: "خطا در دریافت برنامه مطالعه",
-                            color = PlanNavy,
-                            fontFamily = IranSansFontFamily,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp,
-                            textAlign = TextAlign.Center,
-                        )
-                        Spacer(modifier = Modifier.height(20.dp))
-                        Button(
-                            onClick = { viewModel.retry() },
-                            shape = RoundedCornerShape(14.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = PlanPurple),
-                            modifier = Modifier.testTag("study_plan_retry_button"),
-                        ) {
-                            Icon(Icons.Default.Refresh, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = stringResource(id = R.string.study_plan_error_retry),
-                                color = Color.White,
-                                fontFamily = IranSansFontFamily,
-                                fontWeight = FontWeight.Bold,
-                            )
-                        }
-                    }
+                    NetworkErrorView(
+                        title = stringResource(R.string.error_network_title),
+                        description = state.error ?: stringResource(R.string.error_network_desc),
+                        isRetrying = state.loading,
+                        fullScreen = true,
+                        backgroundColor = PlanBackground,
+                        onRetry = { viewModel.retry() }
+                    )
                 } else {
-                    // Main Success / Loaded Content
+                    // Main Success / Loaded Content or Initial Skeleton
                     val allItems = state.day?.items ?: emptyList()
                     val remainingItems = state.remainingItems
                     val completedItems = state.completedItems
                     val isFilterActive = state.selectedFilter != StudyTaskFilter.ALL
                     val displayedItems = state.filteredItems
+                    val isInitialLoading = state.loading && state.day == null
 
                     LazyColumn(
                         modifier = Modifier
@@ -165,7 +130,18 @@ fun StudyPlanScreen(
                             )
                         }
 
-                        // 2. Summary Matrix Card
+                        // 2. Persian Calendar Date Navigation (Centered with Next/Previous & DatePicker)
+                        item(key = "calendar_header") {
+                            StudyPlanCalendarHeader(
+                                selectedDateTitle = state.selectedDateHeaderTitle,
+                                selectedJalaliDate = state.selectedJalaliDate,
+                                onDaySelected = { viewModel.selectJalaliDate(it) },
+                                onPreviousDayClick = { viewModel.selectPreviousDay() },
+                                onNextDayClick = { viewModel.selectNextDay() },
+                            )
+                        }
+
+                        // 3. Summary Matrix Card
                         item(key = "summary_card") {
                             StudyPlanSummaryCard(
                                 totalDurationMinutes = state.totalStudyMinutes,
@@ -173,10 +149,11 @@ fun StudyPlanScreen(
                                 completedCount = state.completedTasks,
                                 totalCount = state.totalTasks,
                                 progressFraction = state.progressFraction,
+                                isLoading = isInitialLoading,
                             )
                         }
 
-                        // 3. Filter Row
+                        // 4. Filter Row
                         item(key = "filter_row") {
                             StudyPlanFilterRow(
                                 selectedFilter = state.selectedFilter,
@@ -184,7 +161,18 @@ fun StudyPlanScreen(
                             )
                         }
 
-                        if (allItems.isEmpty()) {
+                        if (isInitialLoading) {
+                            // Shimmer Task Placeholders
+                            items(3, key = { "skeleton_task_$it" }) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 20.dp)
+                                        .height(96.dp)
+                                        .shimmerEffect(RoundedCornerShape(22.dp)),
+                                )
+                            }
+                        } else if (allItems.isEmpty()) {
                             // Empty State
                             item(key = "empty_state") {
                                 StudyPlanEmptyState(
@@ -219,10 +207,19 @@ fun StudyPlanScreen(
                                     } else {
                                         StudyTaskItemCard(
                                             task = task,
-                                            isBookmarked = state.bookmarkedIds.contains(task.id),
-                                            onBookmarkToggle = { viewModel.toggleBookmark(task.id) },
-                                            onStartClick = { viewModel.startTask(task) },
-                                            onContinueClick = { viewModel.startTask(task) },
+                                            onStartClick = {
+                                                viewModel.startTask(task)
+                                                navController.navigate("focus_timer/${task.id}")
+                                            },
+                                            onContinueClick = {
+                                                viewModel.startTask(task)
+                                                navController.navigate("focus_timer/${task.id}")
+                                            },
+                                            onMarkDoneClick = {
+                                                viewModel.markTaskDone(task)
+                                            },
+                                            onEditClick = { viewModel.openEditDialog(task) },
+                                            onDeleteClick = { viewModel.openDeleteConfirmDialog(task) },
                                             isBusy = state.busyTaskId == task.id,
                                         )
                                     }
@@ -261,10 +258,19 @@ fun StudyPlanScreen(
                                 items(remainingItems, key = { "remaining_${it.id}" }) { task ->
                                     StudyTaskItemCard(
                                         task = task,
-                                        isBookmarked = state.bookmarkedIds.contains(task.id),
-                                        onBookmarkToggle = { viewModel.toggleBookmark(task.id) },
-                                        onStartClick = { viewModel.startTask(task) },
-                                        onContinueClick = { viewModel.startTask(task) },
+                                        onStartClick = {
+                                            viewModel.startTask(task)
+                                            navController.navigate("focus_timer/${task.id}")
+                                        },
+                                        onContinueClick = {
+                                            viewModel.startTask(task)
+                                            navController.navigate("focus_timer/${task.id}")
+                                        },
+                                        onMarkDoneClick = {
+                                            viewModel.markTaskDone(task)
+                                        },
+                                        onEditClick = { viewModel.openEditDialog(task) },
+                                        onDeleteClick = { viewModel.openDeleteConfirmDialog(task) },
                                         isBusy = state.busyTaskId == task.id,
                                     )
                                 }
@@ -309,6 +315,33 @@ fun StudyPlanScreen(
                                 onCreated = { viewModel.closeAddDialog() },
                             )
                         },
+                    )
+                }
+
+                // Dialog for editing an existing manual task
+                state.taskBeingEdited?.let { taskToEdit ->
+                    EditTaskDialog(
+                        task = taskToEdit,
+                        books = state.catalog?.books ?: emptyList(),
+                        isUpdating = state.updating,
+                        onDismiss = { viewModel.closeEditDialog() },
+                        onConfirm = { periodCount, minutesPerPeriod ->
+                            viewModel.updateManualTask(
+                                task = taskToEdit,
+                                periodCount = periodCount,
+                                minutesPerPeriod = minutesPerPeriod,
+                                onUpdated = { viewModel.closeEditDialog() },
+                            )
+                        },
+                    )
+                }
+
+                // Dialog for deleting an existing manual task
+                state.taskBeingDeleted?.let { taskToDelete ->
+                    DeleteTaskConfirmDialog(
+                        task = taskToDelete,
+                        onDismiss = { viewModel.closeDeleteConfirmDialog() },
+                        onConfirm = { viewModel.confirmDeleteTask(taskToDelete) },
                     )
                 }
             }

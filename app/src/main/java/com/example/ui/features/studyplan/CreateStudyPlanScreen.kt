@@ -34,8 +34,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Assignment
@@ -50,6 +53,11 @@ import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.AccessTime
 import androidx.compose.material.icons.outlined.CalendarToday
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Layers
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -70,6 +78,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import com.example.ui.core.components.NetworkErrorView
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -86,6 +95,7 @@ import com.example.ui.core.components.shimmerEffect
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
@@ -120,17 +130,22 @@ fun CreateStudyPlanScreen(
     viewModel: CreateStudyPlanViewModel = viewModel(),
 ) {
     val navigateToTasks = {
-        val popped = navController.popBackStack("study_plan", inclusive = false)
+        navController.navigate("study_plan") {
+            popUpTo("dashboard") { inclusive = false }
+            launchSingleTop = true
+        }
+    }
+    val onBackClick = {
+        val popped = navController.popBackStack()
         if (!popped) {
-            // If study_plan is not in backstack, navigate directly to study_plan
-            navController.navigate("study_plan") {
-                popUpTo("main") { inclusive = false }
+            navController.navigate("dashboard") {
+                popUpTo("dashboard") { inclusive = false }
                 launchSingleTop = true
             }
         }
     }
     CreateStudyPlanScreen(
-        onBackClick = navigateToTasks,
+        onBackClick = onBackClick,
         onNavigateToTasks = navigateToTasks,
         viewModel = viewModel,
     )
@@ -246,14 +261,25 @@ fun CreateStudyPlanScreen(
                 }
             },
         ) { paddingValues ->
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .testTag("create_study_plan_lazy_column"),
-                contentPadding = PaddingValues(top = 4.dp, bottom = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
+            if (state.subjects.isEmpty() && !state.isLoadingCatalog) {
+                NetworkErrorView(
+                    modifier = Modifier.padding(paddingValues),
+                    title = stringResource(R.string.error_network_title),
+                    description = state.errorMessage ?: stringResource(R.string.error_network_desc),
+                    isRetrying = state.isLoadingCatalog,
+                    fullScreen = true,
+                    backgroundColor = PlanBg,
+                    onRetry = { viewModel.retryCatalog() }
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                        .testTag("create_study_plan_lazy_column"),
+                    contentPadding = PaddingValues(top = 4.dp, bottom = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
                 // 1. Section 1: Grade & Book Selection (پایه و کتاب) with minimal book names & skeleton loader
                 item(key = "grade_and_book") {
                     GradeAndBookSection(
@@ -355,6 +381,7 @@ fun CreateStudyPlanScreen(
                         onBreakDurationChange = { viewModel.setBreakDuration(it) },
                     )
                 }
+            }
             }
 
             if (state.isSummaryModalVisible) {
@@ -807,7 +834,7 @@ fun ChapterBlockCard(
                 label = "arrow_rotation",
             )
 
-            Box(
+            Column(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Surface(
@@ -862,136 +889,178 @@ fun ChapterBlockCard(
                     }
                 }
 
-                // Floating Overlay Dropdown Menu with Search
-                DropdownMenu(
-                    expanded = isChapterMenuOpen,
-                    onDismissRequest = { isChapterMenuOpen = false },
-                    modifier = Modifier
-                        .fillMaxWidth(0.88f)
-                        .heightIn(max = 260.dp)
-                        .background(Color.White, RoundedCornerShape(14.dp))
-                        .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(14.dp)),
+                // Inline Expandable Chapter Selector (Strict RTL, Stable during typing, compact search)
+                AnimatedVisibility(
+                    visible = isChapterMenuOpen,
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut(),
                 ) {
-                    if (chapters.size > 2) {
-                        OutlinedTextField(
-                            value = searchQuery,
-                            onValueChange = { searchQuery = it },
-                            placeholder = {
-                                Text(
-                                    text = "جستجوی فصل...",
-                                    fontFamily = IranSansFontFamily,
-                                    fontSize = 12.sp,
-                                    color = PlanMuted,
-                                )
-                            },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Search,
-                                    contentDescription = null,
-                                    tint = PlanMuted,
-                                    modifier = Modifier.size(16.dp),
-                                )
-                            },
-                            trailingIcon = {
-                                if (searchQuery.isNotBlank()) {
-                                    IconButton(
-                                        onClick = { searchQuery = "" },
-                                        modifier = Modifier.size(24.dp),
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Close,
-                                            contentDescription = "پاک کردن",
-                                            tint = PlanMuted,
-                                            modifier = Modifier.size(14.dp),
-                                        )
-                                    }
-                                }
-                            },
-                            singleLine = true,
-                            shape = RoundedCornerShape(10.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = PlanPurple,
-                                unfocusedBorderColor = Color(0xFFE2E8F0),
-                                focusedContainerColor = Color(0xFFF8F9FE),
-                                unfocusedContainerColor = Color(0xFFF8F9FE),
-                            ),
-                            textStyle = TextStyle(
-                                fontFamily = IranSansFontFamily,
-                                fontSize = 12.sp,
-                                textAlign = TextAlign.Right,
-                                color = PlanNavy,
-                            ),
+                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                        Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 8.dp, vertical = 6.dp)
-                                .testTag("chapter_search_input_${block.blockId}"),
-                        )
-                    }
-
-                    val filteredChapters = remember(chapters, searchQuery) {
-                        if (searchQuery.isBlank()) {
-                            chapters.mapIndexed { idx, ch -> Triple(idx, ch, formatMinimalChapterName(idx, ch.name)) }
-                        } else {
-                            val q = searchQuery.trim().lowercase()
-                            chapters.mapIndexed { idx, ch -> Triple(idx, ch, formatMinimalChapterName(idx, ch.name)) }
-                                .filter { (idx, ch, title) ->
-                                    title.lowercase().contains(q) ||
-                                        ch.name.lowercase().contains(q) ||
-                                        (idx + 1).toString().contains(q) ||
-                                        (idx + 1).toPersianNumber().contains(q)
-                                }
-                        }
-                    }
-
-                    if (filteredChapters.isEmpty()) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            contentAlignment = Alignment.Center,
+                                .padding(top = 8.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            color = Color.White,
+                            border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                            shadowElevation = 2.dp,
                         ) {
-                            Text(
-                                text = "فصلی یافت نشد",
-                                fontFamily = IranSansFontFamily,
-                                fontSize = 12.sp,
-                                color = PlanMuted,
-                                textAlign = TextAlign.Center,
-                            )
-                        }
-                    } else {
-                        filteredChapters.forEach { (index, ch, formattedTitle) ->
-                            val isSelected = ch.id == chapter?.id
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        text = formattedTitle,
-                                        fontFamily = IranSansFontFamily,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                        color = if (isSelected) PlanPurple else PlanNavy,
-                                        fontSize = 12.5.sp,
-                                        textAlign = TextAlign.Right,
-                                        modifier = Modifier.fillMaxWidth(),
-                                    )
-                                },
-                                trailingIcon = {
-                                    if (isSelected) {
-                                        Icon(
-                                            imageVector = Icons.Default.Check,
-                                            contentDescription = null,
-                                            tint = PlanPurple,
-                                            modifier = Modifier.size(16.dp),
-                                        )
-                                    }
-                                },
-                                onClick = {
-                                    onChapterSelected(ch.id)
-                                    isChapterMenuOpen = false
-                                },
+                            Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .background(if (isSelected) PlanPurple.copy(alpha = 0.08f) else Color.Transparent)
-                                    .testTag("chapter_item_${ch.id}"),
-                            )
+                                    .padding(8.dp),
+                            ) {
+                                if (chapters.size > 2) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(38.dp)
+                                            .background(Color(0xFFF8F9FE), RoundedCornerShape(10.dp))
+                                            .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(10.dp))
+                                            .padding(horizontal = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Search,
+                                            contentDescription = null,
+                                            tint = PlanMuted,
+                                            modifier = Modifier.size(16.dp),
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        BasicTextField(
+                                            value = searchQuery,
+                                            onValueChange = { searchQuery = it },
+                                            singleLine = true,
+                                            maxLines = 1,
+                                            textStyle = TextStyle(
+                                                fontFamily = IranSansFontFamily,
+                                                fontSize = 12.sp,
+                                                textAlign = TextAlign.Right,
+                                                color = PlanNavy,
+                                            ),
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .testTag("chapter_search_input_${block.blockId}"),
+                                            decorationBox = { innerTextField ->
+                                                Box(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    contentAlignment = Alignment.CenterStart,
+                                                ) {
+                                                    if (searchQuery.isEmpty()) {
+                                                        Text(
+                                                            text = "جستجوی فصل...",
+                                                            fontFamily = IranSansFontFamily,
+                                                            fontSize = 11.5.sp,
+                                                            color = PlanMuted,
+                                                            maxLines = 1,
+                                                            softWrap = false,
+                                                            textAlign = TextAlign.Right,
+                                                        )
+                                                    }
+                                                    innerTextField()
+                                                }
+                                            },
+                                        )
+                                        if (searchQuery.isNotBlank()) {
+                                            IconButton(
+                                                onClick = { searchQuery = "" },
+                                                modifier = Modifier.size(24.dp),
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Close,
+                                                    contentDescription = "پاک کردن",
+                                                    tint = PlanMuted,
+                                                    modifier = Modifier.size(14.dp),
+                                                )
+                                            }
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                }
+
+                                val filteredChapters = remember(chapters, searchQuery) {
+                                    if (searchQuery.isBlank()) {
+                                        chapters.mapIndexed { idx, ch -> Triple(idx, ch, formatMinimalChapterName(idx, ch.name)) }
+                                    } else {
+                                        val q = searchQuery.trim().lowercase()
+                                        chapters.mapIndexed { idx, ch -> Triple(idx, ch, formatMinimalChapterName(idx, ch.name)) }
+                                            .filter { (idx, ch, title) ->
+                                                title.lowercase().contains(q) ||
+                                                    ch.name.lowercase().contains(q) ||
+                                                    (idx + 1).toString().contains(q) ||
+                                                    (idx + 1).toPersianNumber().contains(q)
+                                            }
+                                    }
+                                }
+
+                                if (filteredChapters.isEmpty()) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(14.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Text(
+                                            text = "فصلی یافت نشد",
+                                            fontFamily = IranSansFontFamily,
+                                            fontSize = 12.sp,
+                                            color = PlanMuted,
+                                            textAlign = TextAlign.Center,
+                                        )
+                                    }
+                                } else {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .heightIn(max = 210.dp)
+                                            .verticalScroll(rememberScrollState()),
+                                        verticalArrangement = Arrangement.spacedBy(3.dp),
+                                    ) {
+                                        filteredChapters.forEach { (index, ch, formattedTitle) ->
+                                            val isSelected = ch.id == chapter?.id
+                                            Surface(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .clip(RoundedCornerShape(8.dp))
+                                                    .clickable {
+                                                        onChapterSelected(ch.id)
+                                                        isChapterMenuOpen = false
+                                                    }
+                                                    .testTag("chapter_item_${ch.id}"),
+                                                shape = RoundedCornerShape(8.dp),
+                                                color = if (isSelected) PlanPurple.copy(alpha = 0.08f) else Color.Transparent,
+                                                border = if (isSelected) BorderStroke(1.dp, PlanPurple.copy(alpha = 0.35f)) else null,
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(horizontal = 10.dp, vertical = 9.dp),
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                ) {
+                                                    Text(
+                                                        text = formattedTitle,
+                                                        fontFamily = IranSansFontFamily,
+                                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                                        color = if (isSelected) PlanPurple else PlanNavy,
+                                                        fontSize = 12.5.sp,
+                                                        textAlign = TextAlign.Right,
+                                                        modifier = Modifier.weight(1f),
+                                                    )
+                                                    if (isSelected) {
+                                                        Icon(
+                                                            imageVector = Icons.Default.Check,
+                                                            contentDescription = null,
+                                                            tint = PlanPurple,
+                                                            modifier = Modifier.size(16.dp),
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -1668,18 +1737,19 @@ fun StudyPlanSummaryBottomSheet(
     onConfirmSubmit: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val selectedSubject = state.selectedSubject
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = Color.White,
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
         dragHandle = {
             Box(
                 modifier = Modifier
                     .padding(vertical = 12.dp)
-                    .width(40.dp)
-                    .height(4.dp)
+                    .width(44.dp)
+                    .height(4.5.dp)
                     .clip(CircleShape)
                     .background(Color(0xFFE2E8F0)),
             )
@@ -1689,62 +1759,227 @@ fun StudyPlanSummaryBottomSheet(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp)
-                    .padding(bottom = 32.dp)
+                    .padding(horizontal = 20.dp)
+                    .padding(bottom = 28.dp)
                     .testTag("study_plan_summary_modal"),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                // Header
+                // Header with soft gradient accent & badge
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(CircleShape)
-                            .background(PlanPurple.copy(alpha = 0.12f)),
-                        contentAlignment = Alignment.Center,
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Outlined.Assignment,
-                            contentDescription = null,
-                            tint = PlanPurple,
-                            modifier = Modifier.size(24.dp),
-                        )
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(
+                                    Brush.linearGradient(
+                                        colors = listOf(Color(0xFF8B5CF6), Color(0xFF6366F1))
+                                    )
+                                ),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Outlined.Assignment,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(24.dp),
+                            )
+                        }
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(
+                                text = "خلاصه برنامه مطالعاتی",
+                                fontFamily = IranSansFontFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 17.sp,
+                                color = PlanNavy,
+                            )
+                            Text(
+                                text = "پیش‌نمایش جزئیات پارت‌ها و مباحث انتخابی",
+                                fontFamily = IranSansFontFamily,
+                                fontSize = 11.5.sp,
+                                color = PlanMuted,
+                            )
+                        }
                     }
-                    Column {
-                        Text(
-                            text = "خلاصه برنامه مطالعاتی",
-                            fontFamily = IranSansFontFamily,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 17.sp,
-                            color = PlanNavy,
-                        )
-                        Text(
-                            text = "پیش‌نمایش و تایید نهایی قبل از ذخیره",
-                            fontFamily = IranSansFontFamily,
-                            fontSize = 12.sp,
-                            color = PlanMuted,
-                        )
+
+                    // Grade Badge (Only grade, no major)
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFFF3F0FF),
+                        border = BorderStroke(1.dp, Color(0xFFE9D5FF)),
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(5.dp),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.School,
+                                contentDescription = null,
+                                tint = PlanPurple,
+                                modifier = Modifier.size(15.dp),
+                            )
+                            Text(
+                                text = state.selectedGradeName,
+                                fontFamily = IranSansFontFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.5.sp,
+                                color = PlanPurple,
+                            )
+                        }
                     }
                 }
 
-                HorizontalDivider(color = PlanCardBorder, thickness = 1.dp)
+                // 3 Quick Stat Metric Cards in a Row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    // Metric 1: Study Periods Count
+                    Surface(
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(18.dp),
+                        color = Color(0xFFF8FAFC),
+                        border = BorderStroke(1.dp, Color(0xFFEEF2F6)),
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(vertical = 12.dp, horizontal = 10.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFEDE9FE)),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Layers,
+                                    contentDescription = null,
+                                    tint = PlanPurple,
+                                    modifier = Modifier.size(17.dp),
+                                )
+                            }
+                            Text(
+                                text = "${state.periodCount.toPersianNumber()} پارت",
+                                fontFamily = IranSansFontFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                                color = PlanNavy,
+                            )
+                            Text(
+                                text = "تعداد دوره",
+                                fontFamily = IranSansFontFamily,
+                                fontSize = 10.5.sp,
+                                color = PlanMuted,
+                            )
+                        }
+                    }
 
-                // Info Cards
-                // 1. Grade & Major
+                    // Metric 2: Duration per part
+                    Surface(
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(18.dp),
+                        color = Color(0xFFF8FAFC),
+                        border = BorderStroke(1.dp, Color(0xFFEEF2F6)),
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(vertical = 12.dp, horizontal = 10.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFE0F2FE)),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Timer,
+                                    contentDescription = null,
+                                    tint = Color(0xFF0284C7),
+                                    modifier = Modifier.size(17.dp),
+                                )
+                            }
+                            Text(
+                                text = "${state.studyDurationMinutes.toPersianNumber()} دقیقه",
+                                fontFamily = IranSansFontFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                                color = PlanNavy,
+                            )
+                            Text(
+                                text = "مدت هر پارت",
+                                fontFamily = IranSansFontFamily,
+                                fontSize = 10.5.sp,
+                                color = PlanMuted,
+                            )
+                        }
+                    }
+
+                    // Metric 3: Total Topics Selected
+                    Surface(
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(18.dp),
+                        color = Color(0xFFF8FAFC),
+                        border = BorderStroke(1.dp, Color(0xFFEEF2F6)),
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(vertical = 12.dp, horizontal = 10.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFDCFCE7)),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.CheckCircle,
+                                    contentDescription = null,
+                                    tint = Color(0xFF16A34A),
+                                    modifier = Modifier.size(17.dp),
+                                )
+                            }
+                            Text(
+                                text = "${state.selectedTopicCount.toPersianNumber()} مبحث",
+                                fontFamily = IranSansFontFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                                color = PlanNavy,
+                            )
+                            Text(
+                                text = "مباحث انتخابی",
+                                fontFamily = IranSansFontFamily,
+                                fontSize = 10.5.sp,
+                                color = PlanMuted,
+                            )
+                        }
+                    }
+                }
+
+                // Total Study Time Banner (Gradient Pill Card)
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    color = Color(0xFFF8F9FE),
-                    border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                    shape = RoundedCornerShape(18.dp),
+                    color = Color(0xFFFAF5FF),
+                    border = BorderStroke(1.dp, Color(0xFFF3E8FF)),
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(14.dp),
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
@@ -1753,42 +1988,47 @@ fun StudyPlanSummaryBottomSheet(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             Icon(
-                                imageVector = Icons.Default.School,
+                                imageVector = Icons.Outlined.Schedule,
                                 contentDescription = null,
                                 tint = PlanPurple,
-                                modifier = Modifier.size(18.dp),
+                                modifier = Modifier.size(20.dp),
                             )
                             Text(
-                                text = "مقطع و رشته:",
+                                text = "مجموع زمان مطالعه برنامه:",
                                 fontFamily = IranSansFontFamily,
-                                fontSize = 12.5.sp,
-                                color = PlanMuted,
+                                fontSize = 12.sp,
+                                color = PlanNavy,
                             )
                         }
                         Text(
-                            text = "${state.selectedGradeName} • ${state.userMajorName}",
+                            text = if (state.totalHours > 0) {
+                                "${state.totalHours.toPersianNumber()} ساعت و ${state.remainingMinutes.toPersianNumber()} دقیقه"
+                            } else {
+                                "${state.remainingMinutes.toPersianNumber()} دقیقه"
+                            },
                             fontFamily = IranSansFontFamily,
                             fontWeight = FontWeight.Bold,
                             fontSize = 13.sp,
-                            color = PlanNavy,
+                            color = PlanPurple,
                         )
                     }
                 }
 
-                // 2. Selected Book & Chapters Summary
-                val selectedSubject = state.selectedSubject
+                // Selected Book, Chapters & Topics Container
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    color = Color(0xFFF8F9FE),
+                    shape = RoundedCornerShape(20.dp),
+                    color = Color(0xFFFFFFFF),
                     border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                    shadowElevation = 1.dp,
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(14.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
+                        // Book Header Row
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
@@ -1798,15 +2038,27 @@ fun StudyPlanSummaryBottomSheet(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Outlined.MenuBook,
-                                    contentDescription = null,
-                                    tint = PlanPurple,
-                                    modifier = Modifier.size(18.dp),
-                                )
+                                Box(
+                                    modifier = Modifier
+                                        .size(34.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(
+                                            selectedSubject?.tintHex?.let { Color(it.toInt()).copy(alpha = 0.15f) }
+                                                ?: Color(0xFFEDE9FE)
+                                        ),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Outlined.MenuBook,
+                                        contentDescription = null,
+                                        tint = selectedSubject?.tintHex?.let { Color(it.toInt()) } ?: PlanPurple,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                }
                                 Text(
-                                    text = "کتاب انتخابی:",
+                                    text = "کتاب انتخابی",
                                     fontFamily = IranSansFontFamily,
+                                    fontWeight = FontWeight.Medium,
                                     fontSize = 12.5.sp,
                                     color = PlanMuted,
                                 )
@@ -1815,39 +2067,79 @@ fun StudyPlanSummaryBottomSheet(
                                 text = selectedSubject?.name ?: selectedSubject?.minimalName ?: "-",
                                 fontFamily = IranSansFontFamily,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 13.5.sp,
-                                color = PlanPurple,
+                                fontSize = 14.sp,
+                                color = PlanNavy,
                             )
                         }
 
-                        // Selected chapters & topics list
-                        state.chapterBlocks.forEachIndexed { blockIdx, block ->
-                            val chIndex = selectedSubject?.chapters?.indexOfFirst { it.id == block.selectedChapterId } ?: -1
-                            val ch = selectedSubject?.chapters?.firstOrNull { it.id == block.selectedChapterId }
-                            if (ch != null) {
-                                val chTitle = formatMinimalChapterName(if (chIndex >= 0) chIndex else blockIdx, ch.name)
-                                val selectedTopics = ch.topics.filter { block.selectedTopicIds.contains(it.id) }
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .background(Color.White, RoundedCornerShape(10.dp))
-                                        .padding(10.dp),
-                                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                                ) {
-                                    Text(
-                                        text = "فصل: $chTitle",
-                                        fontFamily = IranSansFontFamily,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 12.sp,
-                                        color = PlanNavy,
-                                    )
-                                    if (selectedTopics.isNotEmpty()) {
-                                        Text(
-                                            text = selectedTopics.joinToString("، ") { it.name },
-                                            fontFamily = IranSansFontFamily,
-                                            fontSize = 11.5.sp,
-                                            color = PlanMuted,
-                                        )
+                        HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp)
+
+                        // Selected Chapters & Topics List
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            state.chapterBlocks.forEachIndexed { blockIdx, block ->
+                                val chIndex = selectedSubject?.chapters?.indexOfFirst { it.id == block.selectedChapterId } ?: -1
+                                val ch = selectedSubject?.chapters?.firstOrNull { it.id == block.selectedChapterId }
+                                if (ch != null) {
+                                    val chTitle = formatMinimalChapterName(if (chIndex >= 0) chIndex else blockIdx, ch.name)
+                                    val selectedTopics = ch.topics.filter { block.selectedTopicIds.contains(it.id) }
+                                    
+                                    Surface(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(14.dp),
+                                        color = Color(0xFFF8FAFC),
+                                        border = BorderStroke(1.dp, Color(0xFFF1F5F9)),
+                                    ) {
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                                        ) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                            ) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(6.dp)
+                                                        .clip(CircleShape)
+                                                        .background(PlanPurple)
+                                                )
+                                                Text(
+                                                    text = chTitle,
+                                                    fontFamily = IranSansFontFamily,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 12.5.sp,
+                                                    color = PlanNavy,
+                                                )
+                                            }
+
+                                            if (selectedTopics.isNotEmpty()) {
+                                                // Topics chip badges
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                                ) {
+                                                    selectedTopics.forEach { topic ->
+                                                        Surface(
+                                                            shape = RoundedCornerShape(8.dp),
+                                                            color = Color.White,
+                                                            border = BorderStroke(0.5.dp, Color(0xFFE2E8F0)),
+                                                        ) {
+                                                            Text(
+                                                                text = topic.name,
+                                                                fontFamily = IranSansFontFamily,
+                                                                fontSize = 11.sp,
+                                                                color = PlanMuted,
+                                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -1855,119 +2147,86 @@ fun StudyPlanSummaryBottomSheet(
                     }
                 }
 
-                // 3. Timing & Period Details
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    color = Color(0xFFF8F9FE),
-                    border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text(
-                                text = "${state.periodCount.toPersianNumber()} پارت مطالعه (${state.studyDurationMinutes.toPersianNumber()} دقیقه)",
-                                fontFamily = IranSansFontFamily,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp,
-                                color = PlanNavy,
-                            )
-                            Text(
-                                text = "مجموع زمان: ${state.totalHours.toPersianNumber()} ساعت و ${state.remainingMinutes.toPersianNumber()} دقیقه",
-                                fontFamily = IranSansFontFamily,
-                                fontSize = 11.5.sp,
-                                color = PlanMuted,
-                            )
-                        }
+                Spacer(modifier = Modifier.height(2.dp))
 
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(PlanPurple.copy(alpha = 0.1f))
-                                .padding(horizontal = 10.dp, vertical = 6.dp),
-                        ) {
-                            Text(
-                                text = "${state.selectedTopicCount.toPersianNumber()} مبحث",
-                                fontFamily = IranSansFontFamily,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp,
-                                color = PlanPurple,
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // Action Buttons
+                // Bottom Action Buttons
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     // Back/Edit Button
-                    OutlinedButton(
-                        onClick = onDismiss,
+                    Surface(
                         modifier = Modifier
                             .weight(1f)
-                            .height(50.dp)
+                            .height(52.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .clickable(enabled = !state.isSubmitting) { onDismiss() }
                             .testTag("summary_modal_edit_button"),
-                        shape = RoundedCornerShape(14.dp),
-                        border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
-                        enabled = !state.isSubmitting,
+                        shape = RoundedCornerShape(16.dp),
+                        color = Color(0xFFF1F5F9),
+                        border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
                     ) {
-                        Text(
-                            text = "ویرایش و بازگشت",
-                            fontFamily = IranSansFontFamily,
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 13.5.sp,
-                            color = PlanNavy,
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                        ) {
+                            Text(
+                                text = "ویرایش و بازگشت",
+                                fontFamily = IranSansFontFamily,
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 13.5.sp,
+                                color = PlanNavy,
+                            )
+                        }
                     }
 
                     // Confirm & Submit Button
-                    Button(
-                        onClick = onConfirmSubmit,
+                    Surface(
                         modifier = Modifier
-                            .weight(1.3f)
-                            .height(50.dp)
+                            .weight(1.4f)
+                            .height(52.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .clickable(enabled = !state.isSubmitting) { onConfirmSubmit() }
                             .testTag("summary_modal_confirm_button"),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = PlanPurple),
-                        enabled = !state.isSubmitting,
+                        shape = RoundedCornerShape(16.dp),
+                        color = PlanPurple,
+                        shadowElevation = 2.dp,
                     ) {
-                        if (state.isSubmitting) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                color = Color.White,
-                                strokeWidth = 2.dp,
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "در حال ارسال...",
-                                fontFamily = IranSansFontFamily,
-                                fontSize = 13.5.sp,
-                                color = Color.White,
-                            )
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(18.dp),
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "تایید و ثبت نهایی",
-                                fontFamily = IranSansFontFamily,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.5.sp,
-                                color = Color.White,
-                            )
+                        Row(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                        ) {
+                            if (state.isSubmitting) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.dp,
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "در حال ثبت...",
+                                    fontFamily = IranSansFontFamily,
+                                    fontSize = 13.5.sp,
+                                    color = Color.White,
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "تایید و ثبت نهایی",
+                                    fontFamily = IranSansFontFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp,
+                                    color = Color.White,
+                                )
+                            }
                         }
                     }
                 }

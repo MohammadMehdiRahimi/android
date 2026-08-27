@@ -73,4 +73,17 @@
     <string name="create_plan_approx_total_time">زمان تقریبی کل</string>
     <string name="create_plan_approx_label">تقریباً</string>
     <string name="create_plan_add_chapter_action">اضافه کردن فصل</string>
+    <!-- Task Completion Confirm Strings -->
+    <string name="task_confirm_complete_title">تأیید انجام وظیفه</string>
+    <string name="task_confirm_complete_message">آیا مطمئن هستید که می‌خواهید این تسک را به عنوان «انجام شده» ثبت کنید؟</string>
+    <string name="task_confirm_complete_positive">بله، انجام شد</string>
+    <string name="task_confirm_complete_negative">انصراف</string>
+    <string name="date_picker_dialog_title">انتخاب تاریخ مطالعه</string>
+    <string name="date_picker_confirm">تأیید</string>
+    <!-- Network Error Strings -->
+    <string name="error_network_title">عدم برقراری ارتباط با سرور</string>
+    <string name="error_network_desc">اتصال به اینترنت برقرار نشد. لطفاً وضعیت شبکه خود را بررسی کرده و مجدداً تلاش کنید.</string>
+    <string name="action_retry">تلاش مجدد</string>
+    <string name="error_server_unavailable">سرور موقتاً در دسترس نیست. لطفاً دقایقی دیگر دوباره امتحان کنید.</string>
+    <string name="error_session_expired">نشست کاربری شما منقضی شده است. لطفاً دوباره وارد شوید.</string>
 </resources>

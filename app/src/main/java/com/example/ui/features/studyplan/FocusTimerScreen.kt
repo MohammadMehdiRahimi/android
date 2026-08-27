@@ -1,6 +1,7 @@
 package com.example.ui.features.studyplan
 
 import android.content.Context
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
@@ -12,21 +13,16 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Headset
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -39,21 +35,31 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import com.example.ui.core.components.AppBackground
-import com.example.ui.theme.LocalShetabColors
+import com.example.network.ApiClient
+import com.example.network.StudyExecutionEventDto
+import com.example.network.StudyTaskDto
+import com.example.network.TokenManager
+import com.example.network.currentIsoUtcTimestamp
+import com.example.network.safeApiCall
 import com.example.ui.core.toPersianNumber
+import com.example.ui.theme.IranSansFontFamily
+import com.example.ui.theme.LocalShetabColors
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlin.random.Random
-
-import androidx.activity.compose.BackHandler
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.platform.LocalView
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.util.UUID
+import kotlin.math.cos
+import kotlin.math.sin
 
 fun Int.toPersianString(): String = this.toString().toPersianNumber()
 
@@ -70,21 +76,33 @@ enum class TimerStyle(val title: String) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FocusTimerScreen(navController: NavController, taskId: Int) {
+fun FocusTimerScreen(navController: NavController, taskId: String) {
     val colors = LocalShetabColors.current
     val context = LocalContext.current
     val sharedPrefs = remember { context.getSharedPreferences("pomodoro_prefs", Context.MODE_PRIVATE) }
+    val scope = rememberCoroutineScope()
+    val tokenManager = remember { TokenManager(context) }
     
+    val numericTaskId = taskId.toIntOrNull() ?: 0
+    val db = remember { com.example.data.AppDatabase.getDatabase(context) }
+    val roomTask by db.taskDao().getTaskById(numericTaskId).collectAsStateWithLifecycle(initialValue = null)
+    
+    // Find task in StudyPlanDataCache or fetch if available
+    var serverTask by remember { mutableStateOf<StudyTaskDto?>(null) }
+    var taskTitle by remember { mutableStateOf("") }
+    var taskSubtitle by remember { mutableStateOf("") }
+    var bookName by remember { mutableStateOf("") }
+    var chapterSubtitle by remember { mutableStateOf("") }
+    var totalRounds by remember { mutableIntStateOf(1) }
+    var completedRounds by remember { mutableIntStateOf(0) }
+    var sourceType by remember { mutableStateOf("GENERATED") }
+
     var focusMins by remember { mutableIntStateOf(sharedPrefs.getInt("focus_mins", 25)) }
     var shortBreakMins by remember { mutableIntStateOf(sharedPrefs.getInt("short_break_mins", 5)) }
     var longBreakMins by remember { mutableIntStateOf(sharedPrefs.getInt("long_break_mins", 15)) }
     var intervalsBeforeLongBreak by remember { mutableIntStateOf(sharedPrefs.getInt("intervals", 3)) }
     
     var currentStyle by remember { mutableStateOf(TimerStyle.valueOf(sharedPrefs.getString("timer_style", TimerStyle.CIRCLE.name) ?: TimerStyle.CIRCLE.name)) }
-    
-    val db = remember { com.example.data.AppDatabase.getDatabase(context) }
-    val task by db.taskDao().getTaskById(taskId).collectAsStateWithLifecycle(initialValue = null)
-    val scope = rememberCoroutineScope()
 
     var currentMode by rememberSaveable { mutableStateOf(TimerMode.FOCUS) }
     var completedIntervals by rememberSaveable { mutableIntStateOf(0) }
@@ -94,12 +112,180 @@ fun FocusTimerScreen(navController: NavController, taskId: Int) {
     var isRunning by rememberSaveable { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
     var showExitDialog by remember { mutableStateOf(false) }
+    var showCompletionSheet by remember { mutableStateOf(false) }
     var showBatteryDialog by remember { mutableStateOf(false) }
+    var showSoundDialog by remember { mutableStateOf(false) }
 
     val view = LocalView.current
+    var backendEventSequence by rememberSaveable { mutableIntStateOf(0) }
+
+    // Fetch and bind task from Server / Cache
+    LaunchedEffect(taskId) {
+        // Try looking in memory cache first
+        val todayStr = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Tehran")).toString()
+        val cachedDay = StudyPlanDataCache.getTasks(todayStr)
+        val match = cachedDay?.items?.find { it.id == taskId }
+        if (match != null) {
+            serverTask = match
+        } else if (tokenManager.isLoggedIn()) {
+            val res = safeApiCall { ApiClient.apiService.getStudyTasks(todayStr) }
+            if (res is com.example.network.NetworkResult.Success) {
+                res.data.body?.let { dayBody ->
+                    StudyPlanDataCache.putTasks(todayStr, dayBody)
+                    val found = dayBody.items.find { it.id == taskId }
+                    if (found != null) {
+                        serverTask = found
+                    }
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(serverTask, roomTask) {
+        val sTask = serverTask
+        val rTask = roomTask
+        if (sTask != null) {
+            taskTitle = sTask.title
+            val rawBook = sTask.book.name.trim()
+            val cleanBook = rawBook.split("•", "؛", ":", "-").firstOrNull()?.trim() ?: rawBook
+            bookName = cleanBook
+
+            val rawChapter = sTask.chapter.name.trim()
+            val rawTopic = sTask.topic.name.trim()
+
+            var cleanChapter = rawChapter
+            if (cleanChapter.startsWith(cleanBook)) {
+                cleanChapter = cleanChapter.substring(cleanBook.length).trim(' ', '•', '؛', ':', '-', '،')
+            }
+            if (cleanChapter.isBlank()) cleanChapter = rawChapter
+
+            var cleanTopic = rawTopic
+            if (cleanTopic.startsWith(cleanBook)) {
+                cleanTopic = cleanTopic.substring(cleanBook.length).trim(' ', '•', '؛', ':', '-', '،')
+            }
+
+            chapterSubtitle = when {
+                cleanTopic.isNotBlank() && cleanTopic != cleanChapter -> "$cleanChapter ($cleanTopic)"
+                cleanChapter.isNotBlank() -> cleanChapter
+                else -> ""
+            }
+            taskSubtitle = chapterSubtitle
+
+            sourceType = sTask.sourceType
+            totalRounds = maxOf(1, sTask.periodCount)
+            intervalsBeforeLongBreak = totalRounds
+            
+            val durationPerRound = if (sTask.minutesPerPeriod > 0) {
+                sTask.minutesPerPeriod
+            } else if (sTask.plannedMinutes > 0 && sTask.periodCount > 0) {
+                maxOf(5, sTask.plannedMinutes / sTask.periodCount)
+            } else {
+                45
+            }
+            
+            focusMins = durationPerRound
+            if (sTask.execution != null) {
+                backendEventSequence = maxOf(backendEventSequence, sTask.execution.eventSequence)
+            }
+            if (!isRunning && currentMode == TimerMode.FOCUS) {
+                totalSeconds = focusMins * 60
+                remainingSeconds = totalSeconds
+            }
+        } else if (rTask != null) {
+            taskTitle = rTask.title
+            bookName = rTask.subject
+            chapterSubtitle = rTask.subject
+            taskSubtitle = rTask.subject
+            totalRounds = maxOf(1, rTask.totalCycles)
+            completedRounds = rTask.completedCycles
+            intervalsBeforeLongBreak = totalRounds
+            if (rTask.focusDuration > 0) {
+                focusMins = rTask.focusDuration
+                shortBreakMins = rTask.restDuration
+                if (!isRunning && currentMode == TimerMode.FOCUS) {
+                    totalSeconds = focusMins * 60
+                    remainingSeconds = totalSeconds
+                }
+            }
+        }
+    }
+
+    fun sendBackendEvent(
+        eventType: String,
+        completionOutcome: String? = null,
+        completionPercentage: Int? = null,
+        note: String? = null,
+        onDone: (() -> Unit)? = null,
+    ) {
+        if (!tokenManager.isLoggedIn()) {
+            onDone?.invoke()
+            return
+        }
+        scope.launch(Dispatchers.IO) {
+            val event = StudyExecutionEventDto(
+                clientEventId = UUID.randomUUID().toString(),
+                expectedSequence = backendEventSequence,
+                type = eventType,
+                occurredAt = currentIsoUtcTimestamp(),
+                completionOutcome = completionOutcome,
+                completionPercent = completionPercentage,
+                note = note,
+            )
+            val isManual = sourceType.equals("MANUAL", ignoreCase = true)
+            val primaryRes = safeApiCall {
+                if (isManual) {
+                    ApiClient.apiService.submitManualStudyEvent(
+                        taskId = taskId,
+                        request = event,
+                    )
+                } else {
+                    ApiClient.apiService.submitGeneratedStudyEvent(
+                        taskId = taskId,
+                        request = event,
+                    )
+                }
+            }
+            val finalRes = if (primaryRes is com.example.network.NetworkResult.Error && primaryRes.code == 404) {
+                safeApiCall {
+                    if (isManual) {
+                        ApiClient.apiService.submitGeneratedStudyEvent(
+                            taskId = taskId,
+                            request = event,
+                        )
+                    } else {
+                        ApiClient.apiService.submitManualStudyEvent(
+                            taskId = taskId,
+                            request = event,
+                        )
+                    }
+                }
+            } else {
+                primaryRes
+            }
+            if (finalRes is com.example.network.NetworkResult.Success) {
+                finalRes.data.body?.eventSequence?.let {
+                    backendEventSequence = it
+                } ?: run {
+                    backendEventSequence++
+                }
+                if (eventType == "ACTIVITY_COMPLETED" || eventType == "ACTIVITY_MARKED_DONE") {
+                    StudyPlanDataCache.clear()
+                }
+            } else {
+                backendEventSequence++
+            }
+            withContext(Dispatchers.Main) {
+                onDone?.invoke()
+            }
+        }
+    }
+
     DisposableEffect(isRunning) {
         if (isRunning) {
             view.keepScreenOn = true
+            sendBackendEvent(if (backendEventSequence == 0) "ACTIVITY_STARTED" else "ACTIVITY_RESUMED")
+        } else if (backendEventSequence > 0 && remainingSeconds > 0) {
+            sendBackendEvent("ACTIVITY_PAUSED")
         }
         onDispose {
             view.keepScreenOn = false
@@ -139,19 +325,6 @@ fun FocusTimerScreen(navController: NavController, taskId: Int) {
             soundPlayer.stop()
         }
     }
-
-    LaunchedEffect(task?.id) {
-        task?.let { t ->
-            if (t.focusDuration > 0) {
-                focusMins = t.focusDuration
-                shortBreakMins = t.restDuration
-                if (!isRunning && currentMode == TimerMode.FOCUS) {
-                    totalSeconds = focusMins * 60
-                    remainingSeconds = totalSeconds
-                }
-            }
-        }
-    }
     
     var expectedEndTime by rememberSaveable { mutableLongStateOf(0L) }
 
@@ -188,10 +361,18 @@ fun FocusTimerScreen(navController: NavController, taskId: Int) {
                 when (currentMode) {
                     TimerMode.FOCUS -> {
                         completedIntervals++
-                        task?.let { t ->
+                        completedRounds = minOf(totalRounds, completedRounds + 1)
+                        roomTask?.let { t ->
                             val newCompleted = t.completedCycles + 1
                             val isDone = newCompleted >= t.totalCycles
                             db.taskDao().updateTask(t.copy(completedCycles = newCompleted, isCompleted = isDone || t.isCompleted))
+                        }
+                        if (completedRounds >= totalRounds) {
+                            sendBackendEvent(
+                                eventType = "ACTIVITY_COMPLETED",
+                                completionOutcome = "FULL",
+                                completionPercentage = 100
+                            )
                         }
                         if (completedIntervals >= intervalsBeforeLongBreak) {
                             currentMode = TimerMode.LONG_BREAK
@@ -361,16 +542,25 @@ fun FocusTimerScreen(navController: NavController, taskId: Int) {
                         )
                     }
 
-                    task?.let { t ->
-                        val cycleText = if (currentMode == TimerMode.FOCUS) " • دوره مطالعاتی ${getCycleString(t.completedCycles)}" else ""
+                    if (taskTitle.isNotBlank()) {
+                        val cycleText = if (currentMode == TimerMode.FOCUS) " • دوره مطالعاتی ${getCycleString(completedRounds)} از ${totalRounds.toPersianString()}" else ""
                         Text(
-                            text = "${t.title}$cycleText",
-                            color = Color.White.copy(alpha = 0.7f),
+                            text = "$taskTitle$cycleText",
+                            color = Color.White.copy(alpha = 0.9f),
                             fontSize = 15.sp,
-                            fontWeight = FontWeight.Black,
+                            fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 12.dp),
                             textAlign = TextAlign.Center
                         )
+                        if (taskSubtitle.isNotBlank()) {
+                            Text(
+                                text = taskSubtitle,
+                                color = Color.White.copy(alpha = 0.6f),
+                                fontSize = 12.sp,
+                                modifier = Modifier.padding(top = 4.dp),
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                 }
 
@@ -408,550 +598,882 @@ fun FocusTimerScreen(navController: NavController, taskId: Int) {
             }
         }
     } else {
-        // --- 2. LUXURIOUS CIRCULAR MODERN STUDY TIMER ---
-        Box(modifier = Modifier.fillMaxSize()) {
-            AppBackground()
-            
-            Column(modifier = Modifier.fillMaxSize()) {
-                // Redesigned Aesthetic Header
-                Surface(
-                    color = Color.White,
-                    shape = RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp),
-                    shadowElevation = 4.dp,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.statusBarsPadding()) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(60.dp)
-                                .padding(horizontal = 16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(CircleShape)
-                                    .background(Color(0xFFF1F5F9))
-                                    .clickable { 
-                                        if (isRunning || remainingSeconds < totalSeconds) {
-                                            showExitDialog = true
-                                        } else {
-                                            navController.popBackStack()
-                                        }
-                                    },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                    contentDescription = "بازگشت",
-                                    tint = Color(0xFF1E1B4B),
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-
-                            Text(
-                                text = "تمرکز و بهره‌وری علمی 🧠",
-                                fontSize = 17.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF1E1B4B)
-                            )
-
-                            Box(
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(CircleShape)
-                                    .background(Color(0xFFF1F5F9))
-                                    .clickable { showSettings = true },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Settings,
-                                    contentDescription = "تنظیمات",
-                                    tint = Color(0xFF1E1B4B),
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-    
-                Column(
+        // --- 2. LUXURIOUS CIRCULAR MODERN STUDY TIMER MATCHING DESIGN SPEC ---
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFFFBFBFE))
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // 1. TOP APP BAR
+                Row(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 20.dp, vertical = 14.dp)
-                        .navigationBarsPadding(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    
-                    // A. Interactive Segment Control for TimerMode with Durations & Auto-Cycle Info
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(Color(0xFFF1F5F9), RoundedCornerShape(20.dp))
-                                .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(20.dp))
-                                .padding(4.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            TimerMode.values().forEach { mode ->
-                                val selected = mode == currentMode
-                                val mins = when (mode) {
-                                    TimerMode.FOCUS -> focusMins
-                                    TimerMode.SHORT_BREAK -> shortBreakMins
-                                    TimerMode.LONG_BREAK -> longBreakMins
-                                }
-                                val scale by animateFloatAsState(if (selected) 1.02f else 1.0f, label = "TabScale")
-                                
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .scale(scale)
-                                        .clip(RoundedCornerShape(16.dp))
-                                        .background(
-                                            if (selected) Color(0xFF8B5CF6) else Color.Transparent
-                                        )
-                                        .clickable {
-                                            if (!isRunning) {
-                                                currentMode = mode
-                                                totalSeconds = mins * 60
-                                                remainingSeconds = totalSeconds
-                                            }
-                                        }
-                                        .padding(vertical = 10.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = mode.title,
-                                        fontSize = 12.sp,
-                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                                        color = if (selected) Color.White else Color(0xFF64748B),
-                                        maxLines = 1
-                                    )
-                                }
-                            }
-                        }
-
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { showSettings = true },
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F3FF)),
-                            border = BorderStroke(1.dp, Color(0xFFDDD6FE))
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 14.dp, vertical = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.CheckCircle,
-                                    contentDescription = null,
-                                    tint = Color(0xFF8B5CF6),
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                val safeIntervals = if (intervalsBeforeLongBreak > 0) intervalsBeforeLongBreak else 1
-                                val currentIntervalNum = (completedIntervals % safeIntervals) + 1
-                                val nextStepText = if (currentIntervalNum >= intervalsBeforeLongBreak) "استراحت طولانی 🌴" else "استراحت کوتاه ☕"
-                                Text(
-                                    text = "جلسه ${currentIntervalNum.toPersianString()} از ${intervalsBeforeLongBreak.toPersianString()} مطالعه ➔ بعدی: $nextStepText",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF1E1B4B)
-                                )
-                            }
-                        }
-                    }
-
-                    // B. Stunning Dial & Timer Clock with breathing neon effect
-                    Box(
+                    // Right in RTL: Back Button
+                    Surface(
                         modifier = Modifier
-                            .size(280.dp)
-                            .padding(8.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        // Ambient Soft Breathing Background Glow
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .scale(breathingScale)
-                                .shadow(
-                                    elevation = 16.dp,
-                                    shape = CircleShape,
-                                    ambientColor = Color(0xFF8B5CF6).copy(alpha = 0.25f),
-                                    spotColor = Color(0xFF8B5CF6).copy(alpha = 0.25f)
-                                )
-                                .background(Color.White, CircleShape)
-                        )
-
-                        val sweepGradient = remember {
-                            Brush.sweepGradient(
-                                colors = listOf(
-                                    Color(0xFF8B5CF6),
-                                    Color(0xFFA855F7),
-                                    Color(0xFF8B5CF6)
-                                )
-                            )
-                        }
-
-                        Canvas(modifier = Modifier.fillMaxSize()) {
-                            val strokeWidthVal = 14.dp.toPx()
-                            
-                            // Background track ring
-                            drawArc(
-                                color = Color(0xFFF3E8FF),
-                                startAngle = 0f,
-                                sweepAngle = 360f,
-                                useCenter = false,
-                                style = Stroke(width = strokeWidthVal, cap = StrokeCap.Round)
-                            )
-                            
-                            // Dynamic progress arc
-                            drawArc(
-                                brush = sweepGradient,
-                                startAngle = -90f,
-                                sweepAngle = (1f - animatedProgress) * 360f,
-                                useCenter = false,
-                                style = Stroke(width = strokeWidthVal, cap = StrokeCap.Round)
-                            )
-                        }
-                        
-                        val minutes = remainingSeconds / 60
-                        val seconds = remainingSeconds % 60
-                        
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Surface(
-                                shape = CircleShape,
-                                color = Color(0xFFF3E8FF)
-                            ) {
-                                Text(
-                                    text = if (currentMode == TimerMode.FOCUS) "🎯 در حال یادگیری" else "☕ وقت استراحت",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF7C3AED),
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(6.dp))
-
-                            TimeTicker(
-                                minutes = minutes, 
-                                seconds = seconds, 
-                                fontSize = 52.sp, 
-                                color = Color(0xFF1E1B4B), 
-                                fontWeight = FontWeight.Black
-                            )
-
-                            // Status bullet indicator
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                modifier = Modifier.padding(top = 4.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(8.dp)
-                                        .background(
-                                            if (isRunning) Color(0xFF10B981) else Color(0xFFEF4444),
-                                            CircleShape
-                                        )
-                                )
-                                Text(
-                                    text = if (isRunning) "فعال" else "متوقف شده",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF64748B)
-                                )
-                            }
-                        }
-                    }
-
-                    // C. Tactile Controls & Action Buttons
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(vertical = 4.dp)
-                    ) {
-                        // Quick Subtract 5 Mins Button
-                        Button(
-                            onClick = {
-                                if (!isRunning) {
-                                    val newMins = maxOf(1, focusMins - 5)
-                                    focusMins = newMins
-                                    totalSeconds = focusMins * 60
-                                    remainingSeconds = totalSeconds
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .clickable {
+                                if (isRunning || remainingSeconds < totalSeconds) {
+                                    showExitDialog = true
+                                } else {
+                                    navController.popBackStack()
                                 }
-                            },
-                            enabled = !isRunning,
-                            shape = CircleShape,
-                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFFF3E8FF),
-                                contentColor = Color(0xFF8B5CF6)
-                            ),
-                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
-                        ) {
-                            Text("-۵ د", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        }
-
-                        // Stop/Reset Button
-                        Box(
-                            modifier = Modifier
-                                .size(48.dp)
-                                .clip(CircleShape)
-                                .background(Color.White)
-                                .border(1.dp, Color(0xFFE2E8F0), CircleShape)
-                                .clickable {
-                                    isRunning = false
-                                    remainingSeconds = totalSeconds
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
+                            }
+                            .testTag("focus_back_button"),
+                        shape = CircleShape,
+                        color = Color.White,
+                        border = BorderStroke(1.dp, Color(0xFFF1F5F9)),
+                        shadowElevation = 1.dp
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
                             Icon(
-                                imageVector = Icons.Default.Stop,
-                                contentDescription = "Stop",
-                                tint = Color(0xFF1E1B4B),
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "بازگشت",
+                                tint = PlanNavy,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
-                        
-                        // Play / Pause central orb button
-                        Box(
-                            modifier = Modifier
-                                .size(72.dp)
-                                .shadow(8.dp, CircleShape)
-                                .background(Color(0xFF8B5CF6), CircleShape)
-                                .clip(CircleShape)
-                                .clickable { isRunning = !isRunning },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = if (isRunning) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                contentDescription = if (isRunning) "Pause" else "Play",
-                                tint = Color.White,
-                                modifier = Modifier.size(34.dp)
-                            )
-                        }
-
-                        // Quick Add 5 Mins Button
-                        Button(
-                            onClick = {
-                                if (!isRunning) {
-                                    val newMins = minOf(180, focusMins + 5)
-                                    focusMins = newMins
-                                    totalSeconds = focusMins * 60
-                                    remainingSeconds = totalSeconds
-                                }
-                            },
-                            enabled = !isRunning,
-                            shape = CircleShape,
-                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFFF3E8FF),
-                                contentColor = Color(0xFF8B5CF6)
-                            ),
-                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
-                        ) {
-                            Text("+۵ د", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        }
                     }
 
-                    // D. Beautiful Subject Detail Glassmorphic Card
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        shape = RoundedCornerShape(20.dp),
-                        border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                    // Center Header Title & Subtitle
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Text(
+                            text = "تمرکز و مطالعه",
+                            fontFamily = IranSansFontFamily,
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = PlanNavy
+                        )
+                        Text(
+                            text = "الان روی این تسک تمرکز کن",
+                            fontFamily = IranSansFontFamily,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Normal,
+                            color = PlanMuted
+                        )
+                    }
+
+                    // Left in RTL: Settings (Gear) Button
+                    Surface(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .clickable { showSettings = true }
+                            .testTag("focus_settings_button"),
+                        shape = CircleShape,
+                        color = Color.White,
+                        border = BorderStroke(1.dp, Color(0xFFF1F5F9)),
+                        shadowElevation = 1.dp
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Outlined.Settings,
+                                contentDescription = "تنظیمات",
+                                tint = PlanNavy,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                }
+
+                // 2. TASK INFO CARD
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(22.dp),
+                    color = Color.White,
+                    border = BorderStroke(1.dp, Color(0xFFF0F2F7)),
+                    shadowElevation = 1.dp
+                ) {
+                    val visualConfig = getSubjectVisualConfig(bookName.ifBlank { taskSubtitle }, bookName)
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .shadow(2.dp, RoundedCornerShape(20.dp))
+                            .padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                        // Left box in RTL (Book Icon + Subject Tag)
+                        Surface(
+                            modifier = Modifier
+                                .size(width = 72.dp, height = 76.dp)
+                                .clip(RoundedCornerShape(18.dp)),
+                            shape = RoundedCornerShape(18.dp),
+                            color = visualConfig.containerBg
                         ) {
-                            task?.let { t ->
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Column(
-                                        modifier = Modifier.weight(1f),
-                                        horizontalAlignment = Alignment.Start
-                                    ) {
-                                        Text(
-                                            text = "هدف مطالعه جاری:",
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Medium,
-                                            color = Color(0xFF64748B)
-                                        )
-                                        Text(
-                                            text = t.title,
-                                            fontSize = 14.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color(0xFF1E1B4B),
-                                            maxLines = 2,
-                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                                        )
-                                    }
-
-                                    Spacer(modifier = Modifier.width(12.dp))
-
-                                    Surface(
-                                        shape = RoundedCornerShape(100.dp),
-                                        color = Color(0xFFF3E8FF)
-                                    ) {
-                                        Text(
-                                            text = "دوره ${(t.completedCycles).toString().toPersianNumber()} از ${(t.totalCycles).toString().toPersianNumber()}",
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color(0xFF8B5CF6),
-                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                            maxLines = 1,
-                                            softWrap = false
-                                        )
-                                    }
-                                }
-
-                                Spacer(modifier = Modifier.height(12.dp))
-
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.Center,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    repeat(t.totalCycles) { index ->
-                                        val active = index < t.completedCycles
-                                        val isCurrent = index == t.completedCycles && currentMode == TimerMode.FOCUS
-                                        
-                                        Box(
-                                            modifier = Modifier
-                                                .padding(horizontal = 4.dp)
-                                                .size(if (isCurrent) 11.dp else 9.dp)
-                                                .clip(CircleShape)
-                                                .background(
-                                                    when {
-                                                        active -> Color(0xFF8B5CF6)
-                                                        isCurrent -> Color(0xFF8B5CF6).copy(alpha = 0.7f)
-                                                        else -> Color(0xFFE2E8F0)
-                                                    }
-                                                )
-                                        )
-                                    }
-                                }
-
-                                Spacer(modifier = Modifier.height(12.dp))
-                            }
-
-                            val explanationText = when {
-                                !isRunning -> "ثانیه ثانیه تلاش تو مسیر موفقیتت رو می‌سازه. روی شروع کلیک کن! ⚡"
-                                currentMode == TimerMode.FOCUS -> "گوشی را روی حالت تمرکز قرار داده و تمام مهارکت رو برای یادگیری بذار. 🎯"
-                                else -> "کمی چشمانت رو ببند، آب بنوش و قدری استراحت کن. ☕"
-                            }
-                            
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(14.dp))
-                                    .background(Color(0xFFF8FAFC))
-                                    .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(14.dp))
-                                    .padding(horizontal = 14.dp, vertical = 10.dp),
-                                contentAlignment = Alignment.Center
+                            Column(
+                                modifier = Modifier.fillMaxSize(),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
                             ) {
+                                Icon(
+                                    imageVector = visualConfig.icon,
+                                    contentDescription = null,
+                                    tint = visualConfig.iconTint,
+                                    modifier = Modifier.size(26.dp)
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = explanationText,
-                                    color = Color(0xFF475569),
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier.fillMaxWidth()
+                                    text = visualConfig.title,
+                                    fontFamily = IranSansFontFamily,
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = visualConfig.iconTint,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }
-                    }
 
-                    // E. Interactive Audio Flow & White Noise Soundscape
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        shape = RoundedCornerShape(20.dp),
-                        border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .shadow(2.dp, RoundedCornerShape(20.dp))
-                    ) {
-                        Column(modifier = Modifier.padding(14.dp)) {
+                        // Right details in RTL
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Icon(
-                                        imageVector = Icons.Default.Headset,
-                                        contentDescription = "sound",
-                                        tint = Color(0xFF8B5CF6),
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Text(
-                                        text = "اصوات تمرکز و محیطی",
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF1E1B4B)
-                                    )
-                                }
-
-                                if (isRunning && selectedSound != "سکوت ملو") {
-                                    EqualizerBarAnimated(isRunning = true, customColor = Color(0xFF8B5CF6))
-                                }
+                                Text(
+                                    text = taskTitle.ifBlank { "حل تمرین‌های درس" },
+                                    fontFamily = IranSansFontFamily,
+                                    fontSize = 14.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = PlanNavy,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Icon(
+                                    imageVector = Icons.Outlined.BookmarkBorder,
+                                    contentDescription = null,
+                                    tint = PlanNavy.copy(alpha = 0.7f),
+                                    modifier = Modifier.size(18.dp)
+                                )
                             }
 
-                            Spacer(modifier = Modifier.height(10.dp))
+                            if (chapterSubtitle.isNotBlank()) {
+                                Text(
+                                    text = chapterSubtitle,
+                                    fontFamily = IranSansFontFamily,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Normal,
+                                    color = PlanMuted,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
 
-                            LazyRow(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                contentPadding = PaddingValues(horizontal = 2.dp),
-                                modifier = Modifier.fillMaxWidth()
+                            // Metadata Row (Rounds & Duration)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                items(focusSounds) { sound ->
-                                    val isSelected = sound == selectedSound
-                                    Surface(
-                                        shape = RoundedCornerShape(100.dp),
-                                        color = if (isSelected) Color(0xFF8B5CF6) else Color(0xFFF8FAFC),
-                                        border = BorderStroke(
-                                            1.dp, 
-                                            if (isSelected) Color(0xFF8B5CF6) else Color(0xFFE2E8F0)
-                                        ),
-                                        modifier = Modifier.clickable { selectedSound = sound }
-                                    ) {
-                                        Text(
-                                            text = sound,
-                                            fontSize = 11.sp,
-                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                            color = if (isSelected) Color.White else Color(0xFF475569),
-                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp)
-                                        )
-                                    }
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Refresh,
+                                        contentDescription = null,
+                                        tint = PlanMuted,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Text(
+                                        text = "دور ${(completedRounds + 1).coerceAtMost(totalRounds).toPersianString()}/${totalRounds.toPersianString()}",
+                                        fontFamily = IranSansFontFamily,
+                                        fontSize = 11.5.sp,
+                                        color = PlanMuted,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+
+                                Box(
+                                    modifier = Modifier
+                                        .width(1.dp)
+                                        .height(12.dp)
+                                        .background(Color(0xFFE2E8F0))
+                                )
+
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.AccessTime,
+                                        contentDescription = null,
+                                        tint = PlanMuted,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Text(
+                                        text = "${focusMins.toPersianString()} دقیقه",
+                                        fontFamily = IranSansFontFamily,
+                                        fontSize = 11.5.sp,
+                                        color = PlanMuted,
+                                        fontWeight = FontWeight.Medium
+                                    )
                                 }
                             }
                         }
                     }
+                }
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                // 3. TIMER MODE SWITCHER (Clean Dedicated Row Above the Clock)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Right in RTL: Study Mode Indicator
+                    Surface(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(100.dp))
+                            .clickable {
+                                if (currentMode != TimerMode.FOCUS) {
+                                    currentMode = TimerMode.FOCUS
+                                    totalSeconds = focusMins * 60
+                                    remainingSeconds = totalSeconds
+                                    isRunning = false
+                                }
+                            },
+                        shape = RoundedCornerShape(100.dp),
+                        color = if (currentMode == TimerMode.FOCUS) PlanPurpleLight else Color.Transparent,
+                        border = if (currentMode == TimerMode.FOCUS) BorderStroke(1.dp, PlanPurple.copy(alpha = 0.4f)) else null
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(if (currentMode == TimerMode.FOCUS) PlanPurple else Color(0xFFCBD5E1))
+                            )
+                            Text(
+                                text = "حالت مطالعه",
+                                fontFamily = IranSansFontFamily,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (currentMode == TimerMode.FOCUS) PlanPurple else PlanMuted
+                            )
+                        }
+                    }
+
+                    // Left in RTL: Break Pill
+                    Surface(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(100.dp))
+                            .clickable {
+                                if (currentMode == TimerMode.FOCUS) {
+                                    currentMode = TimerMode.SHORT_BREAK
+                                    totalSeconds = shortBreakMins * 60
+                                    remainingSeconds = totalSeconds
+                                    isRunning = false
+                                }
+                            },
+                        shape = RoundedCornerShape(100.dp),
+                        color = if (currentMode != TimerMode.FOCUS) PlanPurpleLight else Color.White,
+                        border = BorderStroke(1.dp, if (currentMode != TimerMode.FOCUS) PlanPurple else Color(0xFFE2E8F0)),
+                        shadowElevation = 0.5.dp
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.LocalCafe,
+                                contentDescription = null,
+                                tint = if (currentMode != TimerMode.FOCUS) PlanPurple else PlanMuted,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                text = "استراحت",
+                                fontFamily = IranSansFontFamily,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (currentMode != TimerMode.FOCUS) PlanPurple else PlanMuted
+                            )
+                        }
+                    }
+                }
+
+                // 4. CIRCULAR CLOCK DIAL (Spacious & Clean, no overlapping pills)
+                Box(
+                    modifier = Modifier
+                        .size(245.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        val strokeWidthVal = 6.5.dp.toPx()
+                        val canvasRadius = size.minDimension / 2f - 18.dp.toPx()
+                        val centerOffset = Offset(size.width / 2f, size.height / 2f)
+
+                        // Outer Dial Tick Marks (60 ticks)
+                        val totalTicks = 60
+                        for (i in 0 until totalTicks) {
+                            val tickAngle = (i * (360f / totalTicks)) * (Math.PI / 180f)
+                            val innerR = canvasRadius + 8.dp.toPx()
+                            val outerR = canvasRadius + if (i % 5 == 0) 13.dp.toPx() else 11.dp.toPx()
+                            val startX = centerOffset.x + (cos(tickAngle) * innerR).toFloat()
+                            val startY = centerOffset.y + (sin(tickAngle) * innerR).toFloat()
+                            val endX = centerOffset.x + (cos(tickAngle) * outerR).toFloat()
+                            val endY = centerOffset.y + (sin(tickAngle) * outerR).toFloat()
+                            drawLine(
+                                color = if (i % 5 == 0) Color(0xFFCBD5E1) else Color(0xFFE2E8F0),
+                                start = Offset(startX, startY),
+                                end = Offset(endX, endY),
+                                strokeWidth = if (i % 5 == 0) 1.5.dp.toPx() else 1.dp.toPx(),
+                                cap = StrokeCap.Round
+                            )
+                        }
+
+                        // Background Track Ring
+                        drawCircle(
+                            color = Color(0xFFF3E8FF).copy(alpha = 0.7f),
+                            radius = canvasRadius,
+                            center = centerOffset,
+                            style = Stroke(width = strokeWidthVal, cap = StrokeCap.Round)
+                        )
+
+                        // Dynamic Progress Arc
+                        val sweepAngle = ((1f - animatedProgress) * 360f).coerceIn(0.1f, 360f)
+                        drawArc(
+                            color = PlanPurple,
+                            startAngle = -90f,
+                            sweepAngle = sweepAngle,
+                            useCenter = false,
+                            style = Stroke(width = strokeWidthVal, cap = StrokeCap.Round),
+                            topLeft = Offset(centerOffset.x - canvasRadius, centerOffset.y - canvasRadius),
+                            size = androidx.compose.ui.geometry.Size(canvasRadius * 2f, canvasRadius * 2f)
+                        )
+
+                        // Glowing Indicator Knob at the head of the arc
+                        val currentRads = ((-90f + sweepAngle) * (Math.PI / 180f)).toDouble()
+                        val knobCenterX = centerOffset.x + (cos(currentRads) * canvasRadius).toFloat()
+                        val knobCenterY = centerOffset.y + (sin(currentRads) * canvasRadius).toFloat()
+
+                        drawCircle(
+                            color = PlanPurple.copy(alpha = 0.25f),
+                            radius = 9.dp.toPx(),
+                            center = Offset(knobCenterX, knobCenterY)
+                        )
+                        drawCircle(
+                            color = PlanPurple,
+                            radius = 6.5.dp.toPx(),
+                            center = Offset(knobCenterX, knobCenterY)
+                        )
+                        drawCircle(
+                            color = Color.White,
+                            radius = 2.5.dp.toPx(),
+                            center = Offset(knobCenterX, knobCenterY)
+                        )
+                    }
+
+                    // Inside Central Digits and Brain Icon
+                    val minutes = remainingSeconds / 60
+                    val seconds = remainingSeconds % 60
+
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Psychology,
+                            contentDescription = null,
+                            tint = PlanPurple,
+                            modifier = Modifier.size(32.dp)
+                        )
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        TimeTicker(
+                            minutes = minutes,
+                            seconds = seconds,
+                            fontSize = 46.sp,
+                            color = PlanNavy,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Spacer(modifier = Modifier.height(2.dp))
+
+                        Text(
+                            text = "زمان باقی‌مانده",
+                            fontFamily = IranSansFontFamily,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Normal,
+                            color = PlanMuted
+                        )
+                    }
+                }
+
+                // 5. ACTION CONTROLS IN CRESCENT ARC (شکل هلال)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 4.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Right in RTL: Settings (offset down to form crescent)
+                    Column(
+                        modifier = Modifier.offset(y = 12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        Surface(
+                            modifier = Modifier
+                                .size(46.dp)
+                                .clip(CircleShape)
+                                .clickable { showSettings = true }
+                                .testTag("timer_settings_btn"),
+                            shape = CircleShape,
+                            color = Color.White,
+                            border = BorderStroke(1.dp, Color(0xFFF0F2F7)),
+                            shadowElevation = 1.dp
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Tune,
+                                    contentDescription = "تنظیمات",
+                                    tint = PlanNavy,
+                                    modifier = Modifier.size(19.dp)
+                                )
+                            }
+                        }
+                        Text(
+                            text = "تنظیمات",
+                            fontFamily = IranSansFontFamily,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = PlanNavy
+                        )
+                    }
+
+                    // Reset Button (offset slightly down)
+                    Column(
+                        modifier = Modifier.offset(y = 4.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        Surface(
+                            modifier = Modifier
+                                .size(46.dp)
+                                .clip(CircleShape)
+                                .clickable {
+                                    isRunning = false
+                                    remainingSeconds = totalSeconds
+                                }
+                                .testTag("timer_reset_btn"),
+                            shape = CircleShape,
+                            color = Color.White,
+                            border = BorderStroke(1.dp, Color(0xFFF0F2F7)),
+                            shadowElevation = 1.dp
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Outlined.RestartAlt,
+                                    contentDescription = "بازنشانی",
+                                    tint = PlanNavy,
+                                    modifier = Modifier.size(19.dp)
+                                )
+                            }
+                        }
+                        Text(
+                            text = "بازنشانی",
+                            fontFamily = IranSansFontFamily,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = PlanNavy
+                        )
+                    }
+
+                    // Center Hero Button: Play / Pause (elevated at center of crescent)
+                    Column(
+                        modifier = Modifier.offset(y = (-6).dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        Surface(
+                            modifier = Modifier
+                                .width(94.dp)
+                                .height(54.dp)
+                                .clip(RoundedCornerShape(20.dp))
+                                .clickable { isRunning = !isRunning }
+                                .testTag("timer_toggle_play_btn"),
+                            shape = RoundedCornerShape(20.dp),
+                            color = PlanPurple,
+                            shadowElevation = 4.dp
+                        ) {
+                            Column(
+                                modifier = Modifier.fillMaxSize(),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = if (isRunning) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                    contentDescription = if (isRunning) "توقف" else "شروع",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Text(
+                                    text = if (isRunning) "توقف" else "شروع",
+                                    fontFamily = IranSansFontFamily,
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            }
+                        }
+                    }
+
+                    // Skip Button (offset slightly down)
+                    Column(
+                        modifier = Modifier.offset(y = 4.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        Surface(
+                            modifier = Modifier
+                                .size(46.dp)
+                                .clip(CircleShape)
+                                .clickable {
+                                    isRunning = false
+                                    when (currentMode) {
+                                        TimerMode.FOCUS -> {
+                                            completedIntervals++
+                                            completedRounds = minOf(totalRounds, completedRounds + 1)
+                                            currentMode = if (completedIntervals >= intervalsBeforeLongBreak) TimerMode.LONG_BREAK else TimerMode.SHORT_BREAK
+                                        }
+                                        else -> {
+                                            currentMode = TimerMode.FOCUS
+                                        }
+                                    }
+                                    totalSeconds = when(currentMode) {
+                                        TimerMode.FOCUS -> focusMins * 60
+                                        TimerMode.SHORT_BREAK -> shortBreakMins * 60
+                                        TimerMode.LONG_BREAK -> longBreakMins * 60
+                                    }
+                                    remainingSeconds = totalSeconds
+                                }
+                                .testTag("timer_skip_btn"),
+                            shape = CircleShape,
+                            color = Color.White,
+                            border = BorderStroke(1.dp, Color(0xFFF0F2F7)),
+                            shadowElevation = 1.dp
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Outlined.SkipNext,
+                                    contentDescription = "رد کردن",
+                                    tint = PlanNavy,
+                                    modifier = Modifier.size(19.dp)
+                                )
+                            }
+                        }
+                        Text(
+                            text = "رد کردن",
+                            fontFamily = IranSansFontFamily,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = PlanNavy
+                        )
+                    }
+
+                    // Left in RTL: Sound / Music Selection (offset down to form crescent)
+                    Column(
+                        modifier = Modifier.offset(y = 12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        Surface(
+                            modifier = Modifier
+                                .size(46.dp)
+                                .clip(CircleShape)
+                                .clickable { showSoundDialog = true }
+                                .testTag("timer_sound_btn"),
+                            shape = CircleShape,
+                            color = Color.White,
+                            border = BorderStroke(1.dp, Color(0xFFF0F2F7)),
+                            shadowElevation = 1.dp
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Outlined.MusicNote,
+                                    contentDescription = "صدا/موسیقی",
+                                    tint = PlanNavy,
+                                    modifier = Modifier.size(19.dp)
+                                )
+                            }
+                        }
+                        Text(
+                            text = "صدا/موسیقی",
+                            fontFamily = IranSansFontFamily,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = PlanNavy
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                // 6. TASK PROGRESS CARD ("پیشرفت این تسک" - Compact, without "0 از 3", without stats card)
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(18.dp),
+                    color = Color.White,
+                    border = BorderStroke(1.dp, Color(0xFFF0F2F7)),
+                    shadowElevation = 1.dp
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Right in RTL: Title only
+                            Text(
+                                text = "پیشرفت این تسک",
+                                fontFamily = IranSansFontFamily,
+                                fontSize = 13.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = PlanNavy
+                            )
+
+                            // Left in RTL (Remaining rounds flag)
+                            val remRounds = maxOf(0, totalRounds - completedRounds)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.OutlinedFlag,
+                                    contentDescription = null,
+                                    tint = PlanMuted,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    text = "$remRounds دور باقی مانده".toPersianNumber(),
+                                    fontFamily = IranSansFontFamily,
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = PlanMuted
+                                )
+                            }
+                        }
+
+                        // Linear Progress Bar
+                        val taskProgress = (completedRounds.toFloat() / maxOf(1, totalRounds)).coerceIn(0f, 1f)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(6.dp)
+                                .clip(RoundedCornerShape(100.dp))
+                                .background(Color(0xFFF1F5F9))
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth(fraction = maxOf(0.02f, taskProgress))
+                                    .fillMaxHeight()
+                                    .clip(RoundedCornerShape(100.dp))
+                                    .background(PlanPurple)
+                            )
+                        }
+                    }
+                }
+
+                // 7. BOTTOM ENCOURAGEMENT BANNER ("عالی پیش می‌ری ✨")
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
+                    shape = RoundedCornerShape(22.dp),
+                    color = Color(0xFFF5F3FF),
+                    border = BorderStroke(1.dp, Color(0xFFEDE9FE))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        // Left in RTL: Finish Task Button
+                        Surface(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(14.dp))
+                                .clickable {
+                                    showCompletionSheet = true
+                                },
+                            shape = RoundedCornerShape(14.dp),
+                            color = Color.White,
+                            border = BorderStroke(1.dp, PlanPurple.copy(alpha = 0.5f))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Celebration,
+                                    contentDescription = null,
+                                    tint = PlanPurple,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    text = "اتمام تسک",
+                                    fontFamily = IranSansFontFamily,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = PlanPurple
+                                )
+                            }
+                        }
+
+                        // Right in RTL: Cheerful title & subtitle
+                        Column(
+                            horizontalAlignment = Alignment.End,
+                            verticalArrangement = Arrangement.spacedBy(3.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    text = "عالی پیش می‌ری",
+                                    fontFamily = IranSansFontFamily,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = PlanNavy
+                                )
+                                Text(text = "✨", fontSize = 14.sp)
+                            }
+                            Text(
+                                text = "تمرکزت رو حفظ کن، به هدفت نزدیک‌تری!",
+                                fontFamily = IranSansFontFamily,
+                                fontSize = 11.5.sp,
+                                color = PlanMuted,
+                                fontWeight = FontWeight.Normal
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Modal Sound Selector Sheet
+    if (showSoundDialog) {
+        val soundSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(
+            onDismissRequest = { showSoundDialog = false },
+            sheetState = soundSheetState,
+            containerColor = Color.White,
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+            dragHandle = {
+                Box(
+                    modifier = Modifier
+                        .padding(vertical = 12.dp)
+                        .width(40.dp)
+                        .height(4.dp)
+                        .background(Color(0xFFCBD5E1), CircleShape)
+                )
+            }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .padding(bottom = 36.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "🎵 اصوات تمرکز و نویز سفید",
+                        color = PlanNavy,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = IranSansFontFamily,
+                        fontSize = 16.sp
+                    )
+                    if (isRunning && selectedSound != "سکوت ملو") {
+                        EqualizerBarAnimated(isRunning = true, customColor = PlanPurple)
+                    }
+                }
+
+                focusSounds.forEach { sound ->
+                    val isSelected = sound == selectedSound
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .clickable {
+                                selectedSound = sound
+                                showSoundDialog = false
+                            },
+                        shape = RoundedCornerShape(14.dp),
+                        color = if (isSelected) PlanPurpleLight else Color(0xFFF8FAFC),
+                        border = BorderStroke(
+                            1.dp,
+                            if (isSelected) PlanPurple else Color(0xFFE2E8F0)
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = sound,
+                                fontFamily = IranSansFontFamily,
+                                fontSize = 13.sp,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                color = if (isSelected) PlanPurpleDark else PlanNavy
+                            )
+                            if (isSelected) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = PlanPurple,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -1027,6 +1549,48 @@ fun FocusTimerScreen(navController: NavController, taskId: Int) {
         }
     }
 
+    if (showCompletionSheet) {
+        TaskCompletionBottomSheet(
+            taskTitle = taskTitle,
+            onDismiss = { showCompletionSheet = false },
+            onCompleteFull = {
+                showCompletionSheet = false
+                isRunning = false
+                sendBackendEvent(
+                    eventType = "ACTIVITY_COMPLETED",
+                    completionOutcome = "FULL",
+                    completionPercentage = 100,
+                    onDone = {
+                        navController.popBackStack()
+                    }
+                )
+            },
+            onCompletePartial = { percent, note ->
+                showCompletionSheet = false
+                isRunning = false
+                sendBackendEvent(
+                    eventType = "ACTIVITY_COMPLETED",
+                    completionOutcome = "PARTIAL",
+                    completionPercentage = percent,
+                    note = note,
+                    onDone = {
+                        navController.popBackStack()
+                    }
+                )
+            },
+            onPauseAndExit = {
+                showCompletionSheet = false
+                isRunning = false
+                sendBackendEvent(
+                    eventType = "ACTIVITY_PAUSED",
+                    onDone = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+        )
+    }
+
     if (showExitDialog) {
         AlertDialog(
             onDismissRequest = { showExitDialog = false },
@@ -1050,7 +1614,12 @@ fun FocusTimerScreen(navController: NavController, taskId: Int) {
                 TextButton(onClick = {
                     showExitDialog = false
                     isRunning = false
-                    navController.popBackStack()
+                    sendBackendEvent(
+                        eventType = "ACTIVITY_PAUSED",
+                        onDone = {
+                            navController.popBackStack()
+                        }
+                    )
                 }) {
                     Text("خروج و توقف", color = Color(0xFFEF4444), fontWeight = FontWeight.Bold)
                 }

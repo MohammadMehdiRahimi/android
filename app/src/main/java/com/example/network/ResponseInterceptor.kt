@@ -24,9 +24,12 @@ class ResponseInterceptor(
         // Global response status checks
         when (response.code) {
             401 -> {
-                // Token expired or invalid - clear token & trigger logout/refresh listener
-                tokenManager.clearToken()
-                onUnauthorized?.invoke()
+                val path = request.url.encodedPath
+                // If not in middle of initial auth requests (send-otp / verify-otp), trigger global 401 cleanup
+                if (!path.contains("auth/send-otp") && !path.contains("auth/verify-otp") && !path.contains("auth/login")) {
+                    tokenManager.clearToken()
+                    onUnauthorized?.invoke()
+                }
             }
             403 -> {
                 // Access forbidden

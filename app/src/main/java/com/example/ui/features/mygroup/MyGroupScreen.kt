@@ -97,6 +97,7 @@ import com.example.network.RespondBattleInvitationDto
 import com.example.network.UpdateGroupDto
 import com.example.network.UpdateMemberRoleDto
 import com.example.network.safeApiCall
+import com.example.ui.core.components.NetworkErrorView
 import com.example.ui.theme.IranSansFontFamily
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -839,7 +840,14 @@ private fun BattleDialog(group: StudyGroupDto, vm: MyGroupViewModel, onDismiss: 
 }
 
 @Composable private fun SimpleInfoCard(text: String) { Card(Modifier.fillMaxWidth().padding(16.dp), colors = CardDefaults.cardColors(Color.White)) { Text(text, Modifier.padding(20.dp), fontFamily = IranSansFontFamily) } }
-@Composable private fun ErrorContent(message: String, retry: () -> Unit) { Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) { Text(message, textAlign = TextAlign.Center); Spacer(Modifier.height(12.dp)); Button(onClick = retry) { Text("تلاش دوباره") } } }
+@Composable private fun ErrorContent(message: String, retry: () -> Unit) {
+    NetworkErrorView(
+        description = message,
+        fullScreen = true,
+        backgroundColor = PageBackground,
+        onRetry = retry
+    )
+}
 private fun formatMinutes(value: Int) = if (value < 60) "$value دقیقه" else "${value / 60}:${(value % 60).toString().padStart(2, '0')} ساعت"
 private fun statusFa(status: String) = when (status) { "ACTIVE" -> "فعال"; "SUCCEEDED" -> "موفق"; "FAILED" -> "ناموفق"; else -> status }
 private fun challengeMemberStatusFa(status: String) = when (status) {

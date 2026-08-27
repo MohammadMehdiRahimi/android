@@ -288,3 +288,277 @@ fun TimeTicker(minutes: Int, seconds: Int, fontSize: androidx.compose.ui.unit.Te
         }
     }
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TaskCompletionBottomSheet(
+    taskTitle: String,
+    onDismiss: () -> Unit,
+    onCompleteFull: () -> Unit,
+    onCompletePartial: (percent: Int, note: String?) -> Unit,
+    onPauseAndExit: () -> Unit,
+) {
+    var isPartialMode by remember { mutableStateOf(false) }
+    var partialPercent by remember { mutableFloatStateOf(50f) }
+    var partialNote by remember { mutableStateOf("") }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = Color.White,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        dragHandle = {
+            Box(
+                modifier = Modifier
+                    .padding(vertical = 12.dp)
+                    .width(44.dp)
+                    .height(4.dp)
+                    .background(Color(0xFFCBD5E1), CircleShape)
+            )
+        }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (isPartialMode) "ثبت پایان نیمه‌کاره 📝" else "پایان یا خروج از تسک 🏁",
+                    fontFamily = com.example.ui.theme.IranSansFontFamily,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1E1B4B)
+                )
+                if (isPartialMode) {
+                    TextButton(onClick = { isPartialMode = false }) {
+                        Text(
+                            text = "بازگشت",
+                            fontFamily = com.example.ui.theme.IranSansFontFamily,
+                            color = PlanPurple,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+
+            if (taskTitle.isNotBlank()) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color(0xFFF8FAFC),
+                    border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                ) {
+                    Text(
+                        text = taskTitle,
+                        fontFamily = com.example.ui.theme.IranSansFontFamily,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF334155),
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
+                    )
+                }
+            }
+
+            if (!isPartialMode) {
+                // Main Options
+                // 1. Full Completion
+                Button(
+                    onClick = onCompleteFull,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = PlanPurple),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "اتمام کامل تسک (۱۰۰٪)",
+                        fontFamily = com.example.ui.theme.IranSansFontFamily,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
+
+                // 2. Partial Completion Button
+                OutlinedButton(
+                    onClick = { isPartialMode = true },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, PlanPurple)
+                ) {
+                    Text(
+                        text = "پایان نیمه‌کاره و ثبت درصد پیشرفت",
+                        fontFamily = com.example.ui.theme.IranSansFontFamily,
+                        fontSize = 13.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = PlanPurple
+                    )
+                }
+
+                // 3. Pause & Exit
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .clickable { onPauseAndExit() },
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color(0xFFF1F5F9)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "توقف موقت و خروج (ادامه در بعد)",
+                            fontFamily = com.example.ui.theme.IranSansFontFamily,
+                            fontSize = 12.5.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFF475569)
+                        )
+                    }
+                }
+
+                // 4. Continue Study
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "ادامه مطالعه",
+                        fontFamily = com.example.ui.theme.IranSansFontFamily,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = PlanNavy
+                    )
+                }
+            } else {
+                // Partial Mode Form
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "درصد پیشرفت مطالعه:",
+                            fontFamily = com.example.ui.theme.IranSansFontFamily,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1E1B4B)
+                        )
+                        Text(
+                            text = "${partialPercent.toInt().toPersianString()} ٪",
+                            fontFamily = com.example.ui.theme.IranSansFontFamily,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Black,
+                            color = PlanPurple
+                        )
+                    }
+
+                    Slider(
+                        value = partialPercent,
+                        onValueChange = { partialPercent = it },
+                        valueRange = 1f..99f,
+                        steps = 97,
+                        colors = SliderDefaults.colors(
+                            thumbColor = PlanPurple,
+                            activeTrackColor = PlanPurple,
+                            inactiveTrackColor = Color(0xFFE2E8F0)
+                        )
+                    )
+
+                    // Quick Chips (25%, 50%, 75%)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf(25, 50, 75).forEach { pct ->
+                            val isSelected = partialPercent.toInt() == pct
+                            Surface(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .clickable { partialPercent = pct.toFloat() },
+                                shape = RoundedCornerShape(10.dp),
+                                color = if (isSelected) PlanPurpleLight else Color(0xFFF8FAFC),
+                                border = BorderStroke(1.dp, if (isSelected) PlanPurple else Color(0xFFE2E8F0))
+                            ) {
+                                Box(
+                                    modifier = Modifier.padding(vertical = 8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "$pct ٪".toPersianNumber(),
+                                        fontFamily = com.example.ui.theme.IranSansFontFamily,
+                                        fontSize = 12.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (isSelected) PlanPurpleDark else Color(0xFF64748B)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Optional Note Input
+                    OutlinedTextField(
+                        value = partialNote,
+                        onValueChange = { partialNote = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("توضیحات یا علت توقف (اختیاری)") },
+                        placeholder = { Text("مثال: وقت تمام شد و نصف مطالب ماند") },
+                        shape = RoundedCornerShape(14.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PlanPurple,
+                            unfocusedBorderColor = Color(0xFFCBD5E1)
+                        ),
+                        minLines = 2,
+                        maxLines = 3
+                    )
+
+                    // Submit Partial Completion Button
+                    Button(
+                        onClick = {
+                            onCompletePartial(partialPercent.toInt(), partialNote.ifBlank { null })
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = PlanPurple),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Text(
+                            text = "ثبت پایان نیمه‌کاره (${partialPercent.toInt().toPersianString()}٪)",
+                            fontFamily = com.example.ui.theme.IranSansFontFamily,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+

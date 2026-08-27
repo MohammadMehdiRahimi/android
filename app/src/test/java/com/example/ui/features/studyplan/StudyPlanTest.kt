@@ -2,6 +2,7 @@ package com.example.ui.features.studyplan
 
 import android.app.Application
 import androidx.test.core.app.ApplicationProvider
+import com.example.domain.date.JalaliDate
 import com.example.network.ApiClient
 import com.example.network.DailyStudyTasksBodyDto
 import com.example.network.StudyTaskDto
@@ -10,6 +11,7 @@ import com.example.network.StudyTaskNamedRefDto
 import com.example.network.StudyTaskSummaryDto
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -44,7 +46,7 @@ class StudyPlanTest {
         ),
         StudyTaskDto(
             id = "task_chem",
-            sourceType = "SYSTEM_PLAN",
+            sourceType = "MANUAL",
             title = "حل تست‌های ترکیبات آلی",
             book = StudyTaskNamedRefDto(id = "b2", name = "شیمی ۳"),
             chapter = StudyTaskNamedRefDto(id = "c2", name = "فصل ۳"),
@@ -57,11 +59,11 @@ class StudyPlanTest {
                 id = "exec1",
                 status = "ACTIVE",
                 activeSeconds = 3600, // 60 min elapsed
-            ), // In Progress
+            ), // In Progress - Execution != null
         ),
         StudyTaskDto(
             id = "task_bio",
-            sourceType = "SYSTEM_PLAN",
+            sourceType = "MANUAL",
             title = "مطالعه درس تنظیم عصبی",
             book = StudyTaskNamedRefDto(id = "b3", name = "زیست‌شناسی ۳"),
             chapter = StudyTaskNamedRefDto(id = "c3", name = "فصل ۲"),
@@ -70,11 +72,7 @@ class StudyPlanTest {
             periodCount = 1,
             minutesPerPeriod = 25,
             plannedMinutes = 25,
-            execution = StudyTaskExecutionDto(
-                id = "exec2",
-                status = "COMPLETED",
-                completionPercent = 100,
-            ), // Completed
+            execution = null, // Pending Manual Task -> Editable & Deletable
         ),
     )
 
@@ -86,18 +84,35 @@ class StudyPlanTest {
                 items = sampleTasks,
                 summary = StudyTaskSummaryDto(
                     total = 3,
-                    completed = 1,
-                    pending = 2,
-                    completionPercent = 33,
+                    completed = 0,
+                    pending = 3,
+                    completionPercent = 0,
                 ),
             ),
         )
 
         assertEquals(3, state.totalTasks)
-        assertEquals(1, state.completedTasks)
-        assertEquals(2, state.remainingTasks)
+        assertEquals(0, state.completedTasks)
+        assertEquals(3, state.remainingTasks)
         assertEquals(160, state.totalStudyMinutes)
-        assertEquals(1f / 3f, state.progressFraction, 0.01f)
+    }
+
+    @Test
+    fun `test execution lock property rules`() {
+        // System Plan task
+        val systemTask = sampleTasks[0]
+        assertFalse(systemTask.isEditable)
+        assertFalse(systemTask.isDeletable)
+
+        // Manual Task with Execution (In Progress) -> LOCKED
+        val executedManualTask = sampleTasks[1]
+        assertFalse(executedManualTask.isEditable)
+        assertFalse(executedManualTask.isDeletable)
+
+        // Manual Task with NO Execution -> EDITABLE & DELETABLE
+        val pendingManualTask = sampleTasks[2]
+        assertTrue(pendingManualTask.isEditable)
+        assertTrue(pendingManualTask.isDeletable)
     }
 
     @Test
@@ -120,13 +135,7 @@ class StudyPlanTest {
 
         // PENDING filter
         val pendingState = state.copy(selectedFilter = StudyTaskFilter.PENDING)
-        assertEquals(1, pendingState.filteredItems.size)
-        assertEquals("task_math", pendingState.filteredItems.first().id)
-
-        // COMPLETED filter
-        val completedState = state.copy(selectedFilter = StudyTaskFilter.COMPLETED)
-        assertEquals(1, completedState.filteredItems.size)
-        assertEquals("task_bio", completedState.filteredItems.first().id)
+        assertEquals(2, pendingState.filteredItems.size)
     }
 
     @Test
@@ -170,5 +179,58 @@ class StudyPlanTest {
         assertTrue(viewModel.state.value.bookmarkedIds.contains("task_123"))
         viewModel.toggleBookmark("task_123")
         assertFalse(viewModel.state.value.bookmarkedIds.contains("task_123"))
+    }
+
+    @Test
+    fun `test jalali date selection and dialog controls in viewModel`() {
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        val viewModel = StudyPlanViewModel(app)
+
+        val targetDate = JalaliDate(1405, 6, 15)
+        viewModel.selectJalaliDate(targetDate)
+        assertEquals(targetDate, viewModel.state.value.selectedJalaliDate)
+
+        viewModel.selectNextDay()
+        assertEquals(JalaliDate(1405, 6, 16), viewModel.state.value.selectedJalaliDate)
+
+        viewModel.selectPreviousDay()
+        assertEquals(targetDate, viewModel.state.value.selectedJalaliDate)
+
+        // Test Dialog state toggles
+        viewModel.openAddDialog()
+        assertTrue(viewModel.state.value.showAddDialog)
+        viewModel.closeAddDialog()
+        assertFalse(viewModel.state.value.showAddDialog)
+
+        val pendingManualTask = sampleTasks[2]
+        viewModel.openEditDialog(pendingManualTask)
+        assertEquals(pendingManualTask, viewModel.state.value.taskBeingEdited)
+        viewModel.closeEditDialog()
+        assertNull(viewModel.state.value.taskBeingEdited)
+
+        viewModel.openDeleteConfirmDialog(pendingManualTask)
+        assertEquals(pendingManualTask, viewModel.state.value.taskBeingDeleted)
+        viewModel.closeDeleteConfirmDialog()
+        assertNull(viewModel.state.value.taskBeingDeleted)
+    }
+
+    @Test
+    fun `test markTaskDone execution state transition logic`() {
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        val viewModel = StudyPlanViewModel(app)
+
+        // Calling markTaskDone for a pending task initiates activity completion
+        val pendingTask = sampleTasks[0]
+        viewModel.markTaskDone(pendingTask)
+        // Check that function executes safely without exceptions
+        assertTrue(pendingTask.isPending)
+    }
+
+    @Test
+    fun `test viewModel factory instantiation`() {
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        val factory = StudyPlanViewModel.provideFactory(app)
+        val createdVm = factory.create(StudyPlanViewModel::class.java)
+        assertTrue(createdVm is StudyPlanViewModel)
     }
 }

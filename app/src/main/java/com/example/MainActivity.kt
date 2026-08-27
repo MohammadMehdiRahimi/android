@@ -81,6 +81,32 @@ class MainActivity : ComponentActivity() {
             */
 
             val navBackStackEntry by navController.currentBackStackEntryAsState()
+
+            // Observe global AuthEvents (401 session expiration & logout)
+            LaunchedEffect(Unit) {
+                com.example.network.SessionManager.authEvents.collect { event ->
+                    when (event) {
+                        is com.example.network.AuthEvent.SessionExpired -> {
+                            android.widget.Toast.makeText(
+                                this@MainActivity,
+                                event.message,
+                                android.widget.Toast.LENGTH_LONG
+                            ).show()
+                            navController.navigate("login_phone") {
+                                popUpTo(0) { inclusive = true }
+                                launchSingleTop = true
+                            }
+                        }
+                        is com.example.network.AuthEvent.LoggedOut -> {
+                            navController.navigate("login_phone") {
+                                popUpTo(0) { inclusive = true }
+                                launchSingleTop = true
+                            }
+                        }
+                    }
+                }
+            }
+
             LaunchedEffect(navBackStackEntry) {
                 val route = navBackStackEntry?.destination?.route
                 /* Firebase token refresh is temporarily disabled.
@@ -189,13 +215,15 @@ class MainActivity : ComponentActivity() {
                             com.example.ui.features.exams.ExamTakingScreen(navController)
                         }
                         composable("study_plan") {
-                            com.example.ui.features.studyplan.StudyPlanScreen(navController)
+                            ShetabApp(selectedTheme, navController, initialTab = 1) { newTheme ->
+                                selectedTheme = newTheme
+                            }
                         }
                         composable("create_study_plan") {
                             com.example.ui.features.studyplan.CreateStudyPlanScreen(navController)
                         }
                         composable("focus_timer/{taskId}") { backStackEntry ->
-                            val taskId = backStackEntry.arguments?.getString("taskId")?.toIntOrNull() ?: 0
+                            val taskId = backStackEntry.arguments?.getString("taskId") ?: ""
                             com.example.ui.features.studyplan.FocusTimerScreen(navController, taskId)
                         }
                         composable("flashcards") {

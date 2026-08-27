@@ -119,21 +119,13 @@ class TokenManager(context: Context) {
             .apply()
     }
 
-    fun clearToken() {
-        prefs.edit()
-            .remove("jwt_token")
-            .remove("refresh_token")
-            .remove("user_id")
-            .remove("user_phone")
-            .remove("user_role")
-            .remove("user_full_name")
-            .remove("user_title")
-            .remove("profile_image_url")
-            .remove("global_points")
-            .remove("access_expires_at")
-            .remove("session_expires_at")
-            .apply()
+    fun clearAllData() {
+        prefs.edit().clear().apply()
         _authVersion.value = _authVersion.value + 1
+    }
+
+    fun clearToken() {
+        clearAllData()
     }
 
     fun getRefreshToken(): String? = prefs.getString("refresh_token", null)

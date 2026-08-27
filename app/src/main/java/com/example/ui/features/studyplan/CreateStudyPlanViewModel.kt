@@ -230,6 +230,11 @@ class CreateStudyPlanViewModel(application: Application) : AndroidViewModel(appl
         }
     }
 
+    fun retryCatalog() {
+        _state.update { it.copy(isLoadingCatalog = true, errorMessage = null) }
+        loadCatalog(_state.value.selectedGrade)
+    }
+
     private fun buildDefaultSubjects(majorName: String): List<SubjectVisualItem> {
         return when {
             majorName.contains("ریاضی") -> listOf(
@@ -701,6 +706,7 @@ class CreateStudyPlanViewModel(application: Application) : AndroidViewModel(appl
             _state.update { it.copy(isSubmitting = false) }
 
             if (successCount > 0 || lastErrorMessage == null) {
+                StudyPlanDataCache.invalidate()
                 _state.update { it.copy(isSummaryModalVisible = false) }
                 _events.emit(CreateStudyPlanEvent.PlanSaved)
                 onSuccess()

@@ -27,6 +27,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -62,9 +63,15 @@ import kotlinx.coroutines.delay
 fun ShetabApp(
     selectedTheme: AppTheme,
     navController: NavController,
+    initialTab: Int = 0,
     onThemeSelected: (AppTheme) -> Unit,
 ) {
-    var selectedTab by remember { mutableIntStateOf(0) }
+    var selectedTab by rememberSaveable { mutableIntStateOf(initialTab) }
+    LaunchedEffect(initialTab) {
+        if (initialTab != 0) {
+            selectedTab = initialTab
+        }
+    }
     val colors = LocalShetabColors.current
     val context = LocalContext.current
 
@@ -76,12 +83,6 @@ fun ShetabApp(
     val authVersion by tokenManager.authVersion.collectAsState()
     LaunchedEffect(authVersion) {
         isGuest = !tokenManager.isLoggedIn()
-        if (isGuest && navController.currentDestination?.route != "login_phone") {
-            navController.navigate("login_phone") {
-                popUpTo("dashboard") { inclusive = true }
-                launchSingleTop = true
-            }
-        }
     }
     var lastBackPressTime by remember { mutableLongStateOf(0L) }
 
@@ -122,17 +123,20 @@ fun ShetabApp(
                     .padding(innerPadding)
             ) {
                 Crossfade(targetState = selectedTab, label = "tabTransition") { tabIndex ->
-                    var isTabLoading by remember(tabIndex) { mutableStateOf(true) }
+                    var isTabLoading by remember(tabIndex) { mutableStateOf(tabIndex != 1) }
 
                     LaunchedEffect(tabIndex) {
-                        isTabLoading = true
-                        delay(350)
-                        isTabLoading = false
+                        if (tabIndex != 1) {
+                            isTabLoading = true
+                            delay(350)
+                            isTabLoading = false
+                        } else {
+                            isTabLoading = false
+                        }
                     }
 
-                    if (isTabLoading && tabIndex != 0) {
+                    if (isTabLoading && tabIndex != 0 && tabIndex != 1) {
                         when (tabIndex) {
-                            1 -> StudyPlanSkeletonLoading()
                             2 -> AcademicReportSkeletonLoading()
                             3 -> ExamsSkeletonLoading()
                             4 -> ProfileSkeletonLoading()
@@ -1945,6 +1949,7 @@ fun ShetabBottomNavigation(
                         NavItemData(2, "تحلیل‌گر", Icons.Filled.PieChart, Icons.Outlined.PieChart),
                         NavItemData(1, "برنامه‌ریزی", Icons.Filled.CalendarToday, Icons.Outlined.CalendarToday),
                     )
+                    val navActivePurple = Color(0xFF8B6EF7)
                     navItems.forEach { item ->
                         val selected = selectedTab == item.index
                         Box(
@@ -1960,7 +1965,7 @@ fun ShetabBottomNavigation(
                             if (item.index == 0) {
                                 Text(
                                     text = "خانه",
-                                    color = Color(0xFF7656F5),
+                                    color = navActivePurple,
                                     fontFamily = com.example.ui.theme.IranSansFontFamily,
                                     fontSize = 9.sp,
                                     fontWeight = FontWeight.Bold,
@@ -1976,13 +1981,13 @@ fun ShetabBottomNavigation(
                                     Icon(
                                         imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
                                         contentDescription = item.title,
-                                        tint = if (selected) Color(0xFF7656F5) else Color(0xFF9CA4BC),
+                                        tint = if (selected) navActivePurple else Color(0xFF9CA4BC),
                                         modifier = Modifier.size(20.dp),
                                     )
                                     Spacer(Modifier.height(2.dp))
                                     Text(
                                         text = item.title,
-                                        color = if (selected) Color(0xFF7656F5) else Color(0xFF9CA4BC),
+                                        color = if (selected) navActivePurple else Color(0xFF9CA4BC),
                                         fontFamily = com.example.ui.theme.IranSansFontFamily,
                                         fontSize = 9.sp,
                                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
@@ -2002,7 +2007,7 @@ fun ShetabBottomNavigation(
                     .offset(y = (-10).dp)
                     .size(48.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF7656F5))
+                    .background(Color(0xFF8B6EF7))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,

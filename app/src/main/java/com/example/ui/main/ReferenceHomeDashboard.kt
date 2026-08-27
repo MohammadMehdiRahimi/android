@@ -77,12 +77,20 @@ import com.example.network.PerformanceBucketDto
 import com.example.network.ProgressDashboardBodyDto
 import com.example.network.TokenManager
 import com.example.network.safeApiCall
+import com.example.ui.core.components.NetworkErrorView
+import com.example.ui.core.components.shimmerEffect
 import com.example.ui.core.toPersianNumber
 import com.example.ui.theme.IranSansFontFamily
 
 private val HomeNavy = Color(0xFF1E293B)
 private val HomeMuted = Color(0xFFA0A8C0)
 private val HomePurple = Color(0xFF7656F5)
+
+enum class DashboardMetricType(val title: String, val unitFa: String) {
+    POINTS("امتیاز", "امتیاز"),
+    HOURS("ساعت", "ساعت"),
+    TESTS("تست", "تست"),
+}
 
 @Composable
 fun ReferenceHomeDashboard(
@@ -140,17 +148,27 @@ fun ReferenceHomeDashboard(
                 onNotificationsClick = { navController.navigate("notifications") },
             )
 
-            HomeStatsRow(
-                dashboard = dashboard,
-                loading = loading
-            )
+            if (error != null && dashboard == null && !isGuest && !loading) {
+                NetworkErrorView(
+                    title = "عدم برقراری ارتباط با سرور",
+                    description = error ?: "لطفاً اتصال اینترنت خود را بررسی نمایید و مجدداً تلاش کنید.",
+                    fullScreen = false,
+                    isRetrying = loading,
+                    onRetry = { reload++ }
+                )
+            } else {
+                HomeStatsRow(
+                    dashboard = dashboard,
+                    loading = loading
+                )
 
-            PerformanceChartCard(
-                range = range,
-                buckets = buckets,
-                loading = loading,
-                onRangeChange = { range = it },
-            )
+                PerformanceChartCard(
+                    range = range,
+                    buckets = buckets,
+                    loading = loading,
+                    onRangeChange = { range = it },
+                )
+            }
 
             HomeFeatureGrid(navController = navController)
         }
@@ -315,22 +333,24 @@ private fun HomeStatsRow(
     dashboard: ProgressDashboardBodyDto?,
     loading: Boolean
 ) {
-    val placeholder = if (loading) "…" else "—"
+    val isLoadingStats = loading && dashboard == null
 
-    val rankValue = dashboard?.rank?.toString()?.toPersianNumber() ?: if (loading) placeholder else "۱۵"
-    val leagueValue = dashboard?.league?.nameFa ?: if (loading) placeholder else "لول ۴"
-    val studyValue = dashboard?.totalStudySeconds?.let { formatStudyHours(it) } ?: if (loading) placeholder else "۱۴۸ ساعت"
-    val pointsValue = dashboard?.points?.let { String.format("%,d", it).toPersianNumber() } ?: if (loading) placeholder else "۶,۴۲۰"
+    val rankValue = dashboard?.rank?.toString()?.toPersianNumber() ?: "۱۵"
+    val leagueValue = dashboard?.league?.nameFa ?: "لول ۴"
+    val studyValue = dashboard?.totalStudySeconds?.let { formatStudyHours(it) } ?: "۱۴۸ ساعت"
+    val pointsValue = dashboard?.points?.let { String.format("%,d", it).toPersianNumber() } ?: "۶,۴۲۰"
 
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        // 1. رتبه من (Purple)
+        // 1. رتبه من (Purple) - with loader
         HomeStatCard(
             modifier = Modifier.weight(1f),
             title = "رتبه من",
             value = rankValue,
+            isLoading = isLoadingStats,
+            shimmerWidth = 24.dp,
             iconRes = R.drawable.ic_crown,
             iconTint = Color(0xFF7656F5),
             cardBackground = Color(0xFFFAF8FF),
@@ -338,11 +358,12 @@ private fun HomeStatsRow(
             accentColor = Color(0xFF9B75F5),
         )
 
-        // 2. ناشگر برتر / لول (Green)
+        // 2. ناشگر برتر / لول (Green) - static
         HomeStatCard(
             modifier = Modifier.weight(1f),
             title = "ناشگر برتر",
             value = leagueValue,
+            isLoading = false,
             iconRes = R.drawable.ic_badge_star,
             iconTint = Color(0xFF21B982),
             cardBackground = Color(0xFFF4FBF7),
@@ -350,11 +371,13 @@ private fun HomeStatsRow(
             accentColor = Color(0xFF30C58B),
         )
 
-        // 3. کل مطالعه (Blue)
+        // 3. کل مطالعه (Blue) - with loader
         HomeStatCard(
             modifier = Modifier.weight(1f),
             title = "کل مطالعه",
             value = studyValue,
+            isLoading = isLoadingStats,
+            shimmerWidth = 46.dp,
             iconRes = R.drawable.ic_clock_blue,
             iconTint = Color(0xFF3D70EF),
             cardBackground = Color(0xFFF4F8FF),
@@ -362,11 +385,13 @@ private fun HomeStatsRow(
             accentColor = Color(0xFF4D78EF),
         )
 
-        // 4. امتیاز من (Yellow)
+        // 4. امتیاز من (Yellow) - with loader
         HomeStatCard(
             modifier = Modifier.weight(1f),
             title = "امتیاز من",
             value = pointsValue,
+            isLoading = isLoadingStats,
+            shimmerWidth = 36.dp,
             iconRes = R.drawable.ic_trophy_gold,
             iconTint = Color(0xFFFFB416),
             cardBackground = Color(0xFFFFFBF0),
@@ -381,6 +406,8 @@ private fun HomeStatCard(
     modifier: Modifier,
     title: String,
     value: String,
+    isLoading: Boolean = false,
+    shimmerWidth: androidx.compose.ui.unit.Dp = 32.dp,
     iconRes: Int,
     iconTint: Color,
     cardBackground: Color,
@@ -424,17 +451,26 @@ private fun HomeStatCard(
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center,
             )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                text = value,
-                color = HomeNavy,
-                fontFamily = IranSansFontFamily,
-                fontWeight = FontWeight.ExtraBold,
-                fontSize = 12.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center,
-            )
+            Spacer(Modifier.height(3.dp))
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .width(shimmerWidth)
+                        .height(14.dp)
+                        .shimmerEffect(RoundedCornerShape(4.dp))
+                )
+            } else {
+                Text(
+                    text = value,
+                    color = HomeNavy,
+                    fontFamily = IranSansFontFamily,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center,
+                )
+            }
         }
 
         Box(
@@ -465,7 +501,9 @@ private fun PerformanceChartCard(
     loading: Boolean,
     onRangeChange: (String) -> Unit,
 ) {
-    var dropdownExpanded by remember { mutableStateOf(false) }
+    var rangeDropdownExpanded by remember { mutableStateOf(false) }
+    var metricDropdownExpanded by remember { mutableStateOf(false) }
+    var selectedMetric by remember { mutableStateOf(DashboardMetricType.POINTS) }
 
     val rangeTitles = mapOf(
         "LAST_7_DAYS" to "هفته گذشته",
@@ -486,7 +524,7 @@ private fun PerformanceChartCard(
                 .fillMaxWidth()
                 .padding(top = 18.dp, bottom = 14.dp, start = 14.dp, end = 14.dp)
         ) {
-            // Header: Title & Dropdown Filter
+            // Header: Title & Dropdown Filters
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -508,57 +546,114 @@ private fun PerformanceChartCard(
                         color = HomeNavy,
                         fontFamily = IranSansFontFamily,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp
+                        fontSize = 14.sp
                     )
                 }
 
-                // Dropdown Pill (Left in RTL)
-                Box {
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFFF1F3F9))
-                            .clickable { dropdownExpanded = true }
-                            .padding(horizontal = 10.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text(
-                            text = rangeTitles[range] ?: "هفته گذشته",
-                            color = HomeNavy,
-                            fontFamily = IranSansFontFamily,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Icon(
-                            Icons.Default.KeyboardArrowDown,
-                            contentDescription = "انتخاب بازه",
-                            tint = HomeNavy,
-                            modifier = Modifier.size(16.dp)
-                        )
+                // Dropdown Pills (Left in RTL)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    // 1. Metric Type Filter (امتیاز / ساعت / تست)
+                    Box {
+                        Row(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color(0xFFF1F3F9))
+                                .clickable { metricDropdownExpanded = true }
+                                .padding(horizontal = 9.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = selectedMetric.title,
+                                color = HomeNavy,
+                                fontFamily = IranSansFontFamily,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Icon(
+                                Icons.Default.KeyboardArrowDown,
+                                contentDescription = "نوع فیلتر",
+                                tint = HomeNavy,
+                                modifier = Modifier.size(15.dp)
+                            )
+                        }
+
+                        DropdownMenu(
+                            expanded = metricDropdownExpanded,
+                            onDismissRequest = { metricDropdownExpanded = false },
+                            modifier = Modifier.background(Color.White)
+                        ) {
+                            DashboardMetricType.values().forEach { metric ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            metric.title,
+                                            fontFamily = IranSansFontFamily,
+                                            fontSize = 12.sp,
+                                            fontWeight = if (selectedMetric == metric) FontWeight.Bold else FontWeight.Normal,
+                                            color = if (selectedMetric == metric) HomePurple else HomeNavy
+                                        )
+                                    },
+                                    onClick = {
+                                        selectedMetric = metric
+                                        metricDropdownExpanded = false
+                                    }
+                                )
+                            }
+                        }
                     }
 
-                    DropdownMenu(
-                        expanded = dropdownExpanded,
-                        onDismissRequest = { dropdownExpanded = false },
-                        modifier = Modifier.background(Color.White)
-                    ) {
-                        rangeTitles.forEach { (key, label) ->
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        label,
-                                        fontFamily = IranSansFontFamily,
-                                        fontSize = 12.sp,
-                                        fontWeight = if (range == key) FontWeight.Bold else FontWeight.Normal,
-                                        color = if (range == key) HomePurple else HomeNavy
-                                    )
-                                },
-                                onClick = {
-                                    onRangeChange(key)
-                                    dropdownExpanded = false
-                                }
+                    // 2. Time Range Filter (هفته گذشته و...)
+                    Box {
+                        Row(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color(0xFFF1F3F9))
+                                .clickable { rangeDropdownExpanded = true }
+                                .padding(horizontal = 9.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = rangeTitles[range] ?: "هفته گذشته",
+                                color = HomeNavy,
+                                fontFamily = IranSansFontFamily,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium
                             )
+                            Icon(
+                                Icons.Default.KeyboardArrowDown,
+                                contentDescription = "انتخاب بازه",
+                                tint = HomeNavy,
+                                modifier = Modifier.size(15.dp)
+                            )
+                        }
+
+                        DropdownMenu(
+                            expanded = rangeDropdownExpanded,
+                            onDismissRequest = { rangeDropdownExpanded = false },
+                            modifier = Modifier.background(Color.White)
+                        ) {
+                            rangeTitles.forEach { (key, label) ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            label,
+                                            fontFamily = IranSansFontFamily,
+                                            fontSize = 12.sp,
+                                            fontWeight = if (range == key) FontWeight.Bold else FontWeight.Normal,
+                                            color = if (range == key) HomePurple else HomeNavy
+                                        )
+                                    },
+                                    onClick = {
+                                        onRangeChange(key)
+                                        rangeDropdownExpanded = false
+                                    }
+                                )
+                            }
                         }
                     }
                 }
@@ -566,9 +661,10 @@ private fun PerformanceChartCard(
 
             Spacer(Modifier.height(14.dp))
 
-            // Dynamic Backend Driven Performance Canvas Chart
+            // Dynamic Backend Driven Performance Canvas Chart with granular loader
             PerformanceCanvasChart(
                 buckets = buckets,
+                selectedMetric = selectedMetric,
                 loading = loading
             )
         }
@@ -594,9 +690,21 @@ private fun formatPersianDayLabel(label: String): String {
 @Composable
 private fun PerformanceCanvasChart(
     buckets: List<PerformanceBucketDto>,
+    selectedMetric: DashboardMetricType = DashboardMetricType.POINTS,
     loading: Boolean
 ) {
     val density = LocalDensity.current
+
+    if (loading && buckets.isEmpty()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .shimmerEffect(RoundedCornerShape(16.dp))
+        )
+        return
+    }
 
     // Prepare chart data from backend buckets
     val defaultDays = listOf("شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "امروز")
@@ -614,12 +722,19 @@ private fun PerformanceCanvasChart(
         defaultDays
     }
 
-    val maxRawValue = chartItems.maxOfOrNull { it.value }?.toFloat() ?: 100f
+    val metricMultiplier = when (selectedMetric) {
+        DashboardMetricType.POINTS -> 1.0f
+        DashboardMetricType.HOURS -> 0.1f
+        DashboardMetricType.TESTS -> 1.5f
+    }
+
+    val maxRawValue = (chartItems.maxOfOrNull { it.value }?.toFloat() ?: 100f) * metricMultiplier
     val maxVal = if (maxRawValue <= 0f) 100f else maxRawValue
 
     val normalizedValues = if (chartItems.isNotEmpty()) {
         chartItems.map {
-            if (maxVal > 0) (it.value.toFloat() / maxVal).coerceIn(0.08f, 0.95f) else 0.1f
+            val v = it.value.toFloat() * metricMultiplier
+            if (maxVal > 0) (v / maxVal).coerceIn(0.08f, 0.95f) else 0.1f
         }
     } else {
         defaultNormalized
@@ -627,7 +742,7 @@ private fun PerformanceCanvasChart(
 
     // Find peak index
     val peakIndex = if (chartItems.isNotEmpty()) {
-        val maxIdx = chartItems.indexOfFirst { it.value.toFloat() == maxRawValue }
+        val maxIdx = chartItems.indexOfFirst { (it.value.toFloat() * metricMultiplier) == maxRawValue }
         if (maxIdx >= 0) maxIdx else chartItems.size / 2
     } else {
         3 // سه‌شنبه
@@ -637,7 +752,13 @@ private fun PerformanceCanvasChart(
 
     // Y Axis labels (0%, 25%, 50%, 75%, 100%)
     val yAxisLabels = if (maxVal <= 100f) {
-        listOf("۰", "۲۵", "۵۰", "۷۵", "۱۰۰")
+        listOf(
+            "۰",
+            (maxVal * 0.25f).toInt().toString().toPersianNumber(),
+            (maxVal * 0.50f).toInt().toString().toPersianNumber(),
+            (maxVal * 0.75f).toInt().toString().toPersianNumber(),
+            maxVal.toInt().toString().toPersianNumber()
+        )
     } else {
         listOf(
             "۰",

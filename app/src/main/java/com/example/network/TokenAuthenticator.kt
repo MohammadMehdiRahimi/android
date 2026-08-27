@@ -33,15 +33,22 @@ class TokenAuthenticator(
                 .build()
             refreshClient.newCall(refreshRequest).execute().use { refreshResponse ->
                 if (!refreshResponse.isSuccessful) {
-                    tokenManager.clearToken()
-                    cookieJar.clear()
+                    SessionManager.handleUnauthorized()
                     return@synchronized null
                 }
-                val raw = refreshResponse.body?.string() ?: return@synchronized null
-                val body = runCatching { JSONObject(raw).optJSONObject("body") }.getOrNull()
-                    ?: return@synchronized null
+                val raw = refreshResponse.body?.string() ?: run {
+                    SessionManager.handleUnauthorized()
+                    return@synchronized null
+                }
+                val body = runCatching { JSONObject(raw).optJSONObject("body") }.getOrNull() ?: run {
+                    SessionManager.handleUnauthorized()
+                    return@synchronized null
+                }
                 val token = body.optString("accessToken")
-                if (token.isNullOrBlank()) return@synchronized null
+                if (token.isNullOrBlank()) {
+                    SessionManager.handleUnauthorized()
+                    return@synchronized null
+                }
                 tokenManager.saveSession(
                     token,
                     body.optLong("accessExpiresAt").takeIf { it > 0L },
