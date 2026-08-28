@@ -6,7 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.FormatListBulleted
 import androidx.compose.material.icons.outlined.Schedule
@@ -23,6 +23,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
+import com.example.ui.core.components.shimmerEffect
 import com.example.ui.core.toPersianNumber
 import com.example.ui.theme.IranSansFontFamily
 import com.example.ui.theme.LocalShetabColors
@@ -158,7 +159,7 @@ fun ExamItemCard(
                     }
 
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                         contentDescription = null,
                         tint = colors.secondaryText.copy(alpha = 0.5f),
                         modifier = Modifier.size(18.dp)
@@ -294,3 +295,182 @@ fun ExamItemCard(
         }
     }
 }
+
+@Composable
+fun ExamItemCardSkeleton(
+    modifier: Modifier = Modifier
+) {
+    val colors = LocalShetabColors.current
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .border(
+                width = 1.dp,
+                color = colors.primaryText.copy(alpha = 0.06f),
+                shape = RoundedCornerShape(20.dp)
+            ),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp)
+        ) {
+            // === Top Section Skeleton ===
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                // Right side: Icon placeholder + Subject & Topic placeholders
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(46.dp)
+                            .shimmerEffect(RoundedCornerShape(14.dp))
+                    )
+
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .width(80.dp)
+                                    .height(16.dp)
+                                    .shimmerEffect(RoundedCornerShape(6.dp))
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .width(44.dp)
+                                    .height(16.dp)
+                                    .shimmerEffect(RoundedCornerShape(8.dp))
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .width(120.dp)
+                                .height(12.dp)
+                                .shimmerEffect(RoundedCornerShape(4.dp))
+                        )
+                    }
+                }
+
+                // Left side: Date + Chevron placeholders
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .width(60.dp)
+                            .height(14.dp)
+                            .shimmerEffect(RoundedCornerShape(4.dp))
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(16.dp)
+                            .shimmerEffect(RoundedCornerShape(4.dp))
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+            HorizontalDivider(
+                color = colors.primaryText.copy(alpha = 0.05f),
+                thickness = 0.8.dp
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // === Bottom Stats Row Skeleton (3 Columns) ===
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Col 1: Score
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .width(50.dp)
+                            .height(10.dp)
+                            .shimmerEffect(RoundedCornerShape(4.dp))
+                    )
+                    Box(
+                        modifier = Modifier
+                            .width(60.dp)
+                            .height(14.dp)
+                            .shimmerEffect(RoundedCornerShape(4.dp))
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .height(26.dp)
+                        .width(0.8.dp)
+                        .background(colors.primaryText.copy(alpha = 0.06f))
+                )
+
+                // Col 2: Duration
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .width(50.dp)
+                            .height(10.dp)
+                            .shimmerEffect(RoundedCornerShape(4.dp))
+                    )
+                    Box(
+                        modifier = Modifier
+                            .width(50.dp)
+                            .height(14.dp)
+                            .shimmerEffect(RoundedCornerShape(4.dp))
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .height(26.dp)
+                        .width(0.8.dp)
+                        .background(colors.primaryText.copy(alpha = 0.06f))
+                )
+
+                // Col 3: Questions
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .width(50.dp)
+                            .height(10.dp)
+                            .shimmerEffect(RoundedCornerShape(4.dp))
+                    )
+                    Box(
+                        modifier = Modifier
+                            .width(40.dp)
+                            .height(14.dp)
+                            .shimmerEffect(RoundedCornerShape(4.dp))
+                    )
+                }
+            }
+        }
+    }
+}
+

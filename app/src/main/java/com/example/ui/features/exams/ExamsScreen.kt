@@ -31,6 +31,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.R
 import com.example.ui.core.components.AppBackground
+import com.example.ui.core.components.shimmerEffect
 import com.example.ui.core.toPersianNumber
 import com.example.ui.theme.IranSansFontFamily
 import com.example.ui.theme.LocalShetabColors
@@ -134,20 +135,42 @@ fun ExamsScreen(
                         color = colors.secondaryText.copy(alpha = 0.8f),
                         fontFamily = IranSansFontFamily
                     )
-                    Text(
-                        text = "${uiState.filteredExams.size.toString().toPersianNumber()} آزمون",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = Color(0xFF7C3AED),
-                        fontFamily = IranSansFontFamily,
-                        modifier = Modifier.testTag("total_exams_count")
-                    )
+                    if (uiState.isLoading) {
+                        Box(
+                            modifier = Modifier
+                                .width(54.dp)
+                                .height(16.dp)
+                                .shimmerEffect(RoundedCornerShape(6.dp))
+                        )
+                    } else {
+                        Text(
+                            text = "${uiState.filteredExams.size.toString().toPersianNumber()} آزمون",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color(0xFF7C3AED),
+                            fontFamily = IranSansFontFamily,
+                            modifier = Modifier.testTag("total_exams_count")
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // === Exams LazyColumn List ===
-                if (uiState.filteredExams.isEmpty()) {
+                // === Exams LazyColumn List with Granular Skeleton Loading ===
+                if (uiState.isLoading) {
+                    LazyColumn(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        contentPadding = PaddingValues(top = 4.dp, bottom = 100.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        userScrollEnabled = false
+                    ) {
+                        items(5) {
+                            ExamItemCardSkeleton()
+                        }
+                    }
+                } else if (uiState.filteredExams.isEmpty()) {
                     Box(
                         modifier = Modifier
                             .weight(1f)

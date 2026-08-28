@@ -12,16 +12,19 @@ import kotlinx.coroutines.launch
 
 class ExamsViewModel : ViewModel() {
 
-    private val _uiState = MutableStateFlow(ExamsUiState(isLoading = true))
+    private val _uiState = MutableStateFlow(ExamsUiState(isLoading = false))
     val uiState: StateFlow<ExamsUiState> = _uiState.asStateFlow()
 
     init {
-        loadExams()
+        loadExams(delayMs = 0)
     }
 
-    fun loadExams() {
+    fun loadExams(delayMs: Long = 0) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            if (delayMs > 0) {
+                _uiState.update { it.copy(isLoading = true) }
+                kotlinx.coroutines.delay(delayMs)
+            }
 
             // Preset mock data structured strictly to match the design prototype
             val defaultExams = listOf(

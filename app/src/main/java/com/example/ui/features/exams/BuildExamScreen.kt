@@ -115,6 +115,7 @@ fun BuildExamScreen(navController: NavController) {
                 modifier = Modifier
                     .fillMaxSize()
                     .statusBarsPadding()
+                    .navigationBarsPadding()
             ) {
                 // ====================================================
                 // Top App Bar (Title, Subtitle, Help ?, Back Arrow)
@@ -164,7 +165,7 @@ fun BuildExamScreen(navController: NavController) {
                             text = when (currentStep) {
                                 1 -> "مرحله ۱: انتخاب ساختار آزمون"
                                 2 -> "مرحله ۲: تنظیم سوالات"
-                                else -> "مرحله ۳: ساخت آزمون"
+                                else -> "مرحله ۳: خلاصه و ساخت آزمون"
                             },
                             fontSize = 11.5.sp,
                             color = colors.secondaryText.copy(alpha = 0.8f),
@@ -281,24 +282,28 @@ fun BuildExamScreen(navController: NavController) {
                         }
 
                         3 -> {
-                            // Step 3 Screen: Finalize, Exam Name, Duration, Start
-                            val totalQuestionSum = questionConfigs.values.sumOf { it.totalCount }
-                            Step3ExamFinalizeScreen(
-                                examName = examName,
-                                onExamNameChange = { examName = it },
-                                examTimeMinutes = examTimeMinutes,
-                                onExamTimeMinutesChange = { examTimeMinutes = it },
-                                hasNegativeScore = hasNegativeScore,
-                                onNegativeScoreChange = { hasNegativeScore = it },
-                                hasTimeLimit = hasTimeLimit,
-                                onTimeLimitChange = { hasTimeLimit = it },
-                                totalQuestions = totalQuestionSum,
-                                selectedBooksCount = selectedBooks.size,
-                                onStartExam = {
-                                    navController.navigate("exam_taking")
-                                },
-                                onPrevStep = { currentStep = 2 }
-                            )
+                            // Step 3 Screen: Pixel-perfect design matching exam-create-3.png
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .verticalScroll(rememberScrollState())
+                            ) {
+                                Step3ExamSummaryScreen(
+                                    examType = examType,
+                                    grade = grade,
+                                    field = field,
+                                    selectedBooks = selectedBooks,
+                                    questionConfigs = questionConfigs,
+                                    questionSource = questionSource,
+                                    hasNegativeScore = hasNegativeScore,
+                                    randomQuestionOrder = randomQuestionOrder,
+                                    estimatedTimeMinutes = examTimeMinutes,
+                                    onStartExam = {
+                                        navController.navigate("exam_taking")
+                                    },
+                                    onPrevStep = { currentStep = 2 }
+                                )
+                            }
                         }
                     }
                 }
@@ -406,10 +411,10 @@ fun ExamWizardStepper(
             modifier = Modifier.width(36.dp)
         )
 
-        // Step 3 (Left in RTL): ۳. ساخت آزمون
+        // Step 3 (Left in RTL): ۳. خلاصه و ساخت آزمون
         StepIndicatorItem(
             stepNumber = 3,
-            title = "۳. ساخت آزمون",
+            title = "۳. خلاصه و ساخت آزمون",
             isActive = currentStep >= 3,
             isCurrent = currentStep == 3,
             isCompleted = false,

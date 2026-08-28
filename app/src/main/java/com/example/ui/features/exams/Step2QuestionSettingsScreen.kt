@@ -38,7 +38,7 @@ data class BookQuestionConfig(
     val bookName: String,
     val chapter: String,
     val topics: List<String>,
-    val gradientColors: List<Color>,
+    val gradientColors: List<Color> = listOf(Color(0xFF6366F1), Color(0xFF4338CA)),
     var easyCount: Int = 4,
     var mediumCount: Int = 5,
     var hardCount: Int = 3,
@@ -74,190 +74,7 @@ fun Step2QuestionSettingsScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // ====================================================
-            // 1. TOP SUMMARY CARD (2 Distinct Persian Design Rows)
-            // Row 1: نوع آزمون، پایه، رشته
-            // Row 2: تعداد کتاب، منبع سوال
-            // ====================================================
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    // --- ROW 1: نوع آزمون + پایه + رشته ---
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        // Col 1 (Right): نوع آزمون
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = Color(0xFFF3E8FF),
-                            modifier = Modifier.weight(1.2f)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center,
-                                modifier = Modifier.padding(vertical = 7.dp, horizontal = 4.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.FormatListBulleted,
-                                    contentDescription = null,
-                                    tint = Color(0xFF7C3AED),
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = if (examType == "تستی") "آزمون تستی" else "آزمون تشریحی",
-                                    fontSize = 11.5.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF7C3AED),
-                                    fontFamily = IranSansFontFamily
-                                )
-                            }
-                        }
-
-                        // Col 2 (Center): پایه
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = Color(0xFFF9FAFB),
-                            border = BorderStroke(1.dp, Color(0xFFE5E7EB)),
-                            modifier = Modifier.weight(0.9f)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center,
-                                modifier = Modifier.padding(vertical = 7.dp, horizontal = 4.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.School,
-                                    contentDescription = null,
-                                    tint = colors.primaryText.copy(alpha = 0.7f),
-                                    modifier = Modifier.size(13.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = grade,
-                                    fontSize = 11.5.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = colors.primaryText,
-                                    fontFamily = IranSansFontFamily
-                                )
-                            }
-                        }
-
-                        // Col 3 (Left): رشته
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = Color(0xFFF9FAFB),
-                            border = BorderStroke(1.dp, Color(0xFFE5E7EB)),
-                            modifier = Modifier.weight(1.3f)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center,
-                                modifier = Modifier.padding(vertical = 7.dp, horizontal = 6.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Science,
-                                    contentDescription = null,
-                                    tint = colors.primaryText.copy(alpha = 0.7f),
-                                    modifier = Modifier.size(13.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = field,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = colors.primaryText,
-                                    fontFamily = IranSansFontFamily,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                        }
-                    }
-
-                    HorizontalDivider(color = Color(0xFFF3F4F6), thickness = 1.dp)
-
-                    // --- ROW 2: تعداد کتاب + منبع سوال ---
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        // Col 1 (Right): تعداد کتاب‌ها
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = Color(0xFFF9FAFB),
-                            border = BorderStroke(1.dp, Color(0xFFE5E7EB)),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center,
-                                modifier = Modifier.padding(vertical = 7.dp, horizontal = 6.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.MenuBook,
-                                    contentDescription = null,
-                                    tint = Color(0xFF6366F1),
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "تعداد کتاب: ${selectedBooks.size.toString().toPersianNumber()}",
-                                    fontSize = 11.5.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = colors.primaryText,
-                                    fontFamily = IranSansFontFamily
-                                )
-                            }
-                        }
-
-                        // Col 2 (Left): منبع سوال
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = Color(0xFFF9FAFB),
-                            border = BorderStroke(1.dp, Color(0xFFE5E7EB)),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center,
-                                modifier = Modifier.padding(vertical = 7.dp, horizontal = 6.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Layers,
-                                    contentDescription = null,
-                                    tint = Color(0xFF059669),
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "منبع: $questionSource",
-                                    fontSize = 11.5.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = colors.primaryText,
-                                    fontFamily = IranSansFontFamily,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            // ====================================================
-            // 2. BOOK QUESTION CONFIGURATION CARDS
+            // BOOK QUESTION CONFIGURATION CARDS
             // ====================================================
             selectedBooks.forEach { book ->
                 val currentConfig = questionConfigs[book.id] ?: BookQuestionConfig(
@@ -414,7 +231,7 @@ fun Step2QuestionSettingsScreen(
             }
 
             // ====================================================
-            // 4. BOTTOM ACTION BUTTONS
+            // 4. BOTTOM ACTION BUTTONS (ادامه / بازگشت / انصراف)
             // ====================================================
             Spacer(modifier = Modifier.height(4.dp))
 
@@ -436,23 +253,54 @@ fun Step2QuestionSettingsScreen(
                 )
             }
 
-            TextButton(
-                onClick = onPrevStep,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(38.dp)
-                    .testTag("step2_prev_button")
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "بازگشت",
-                    fontSize = 12.5.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF6366F1),
-                    fontFamily = IranSansFontFamily
-                )
+                // Back Button (بازگشت)
+                OutlinedButton(
+                    onClick = onPrevStep,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp)
+                        .testTag("step2_prev_button"),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, Color(0xFF6366F1)),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF6366F1))
+                ) {
+                    Text(
+                        text = "بازگشت",
+                        fontSize = 12.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = IranSansFontFamily
+                    )
+                }
+
+                // Cancel Button (انصراف - Red background, White text)
+                Button(
+                    onClick = onPrevStep,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp)
+                        .testTag("step2_cancel_button"),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFEF4444),
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = "انصراف",
+                        fontSize = 12.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        fontFamily = IranSansFontFamily
+                    )
+                }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(28.dp))
         }
     }
 }
@@ -476,60 +324,19 @@ fun BookQuestionCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Header: Delete action (Left) and Book Info (Right)
+            // Header: Book Info (Right / Start) and Delete action (Left / End) in strict RTL
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Delete button on Left in RTL
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(3.dp),
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable { onDelete() }
-                        .padding(horizontal = 6.dp, vertical = 3.dp)
-                        .testTag("delete_book_card_${config.bookId}")
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Delete,
-                        contentDescription = "حذف",
-                        tint = Color(0xFFEF4444),
-                        modifier = Modifier.size(15.dp)
-                    )
-                    Text(
-                        text = "حذف",
-                        color = Color(0xFFEF4444),
-                        fontFamily = IranSansFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.5.sp
-                    )
-                }
-
-                // Book Details on Right in RTL
+                // Book Info on Right (Start in RTL)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(
-                            text = config.bookName,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = colors.primaryText,
-                            fontFamily = IranSansFontFamily
-                        )
-                        Text(
-                            text = config.chapter,
-                            fontSize = 11.5.sp,
-                            color = colors.secondaryText.copy(alpha = 0.8f),
-                            fontFamily = IranSansFontFamily
-                        )
-                    }
-
                     // Book Cover Artwork
                     Box(
                         modifier = Modifier
@@ -563,28 +370,83 @@ fun BookQuestionCard(
                             )
                         }
                     }
+
+                    Column(horizontalAlignment = Alignment.Start) {
+                        Text(
+                            text = config.bookName,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.primaryText,
+                            fontFamily = IranSansFontFamily
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = config.chapter,
+                            fontSize = 11.5.sp,
+                            color = colors.secondaryText.copy(alpha = 0.8f),
+                            fontFamily = IranSansFontFamily
+                        )
+                    }
+                }
+
+                // Delete button on Left (End in RTL)
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = Color(0xFFFEF2F2),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { onDelete() }
+                        .testTag("delete_book_card_${config.bookId}")
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Delete,
+                            contentDescription = "حذف",
+                            tint = Color(0xFFEF4444),
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Text(
+                            text = "حذف",
+                            color = Color(0xFFEF4444),
+                            fontFamily = IranSansFontFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp
+                        )
+                    }
                 }
             }
 
-            // Selected Topics Row (FlowRow / LazyRow)
-            Row(
+            // Selected Topics Section (RTL)
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.End
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
+                Text(
+                    text = "موضوعات انتخابی:",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = colors.secondaryText,
+                    fontFamily = IranSansFontFamily
+                )
+
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
-                    modifier = Modifier.weight(1f, fill = false)
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     config.topics.forEach { topic ->
                         Surface(
                             shape = RoundedCornerShape(8.dp),
-                            color = Color(0xFFF3E8FF)
+                            color = Color(0xFFF3E8FF),
+                            border = BorderStroke(0.5.dp, Color(0xFFDDD6FE))
                         ) {
                             Text(
                                 text = topic,
-                                fontSize = 10.sp,
+                                fontSize = 10.5.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = Color(0xFF7C3AED),
                                 fontFamily = IranSansFontFamily,
@@ -593,15 +455,6 @@ fun BookQuestionCard(
                         }
                     }
                 }
-
-                Spacer(modifier = Modifier.width(6.dp))
-
-                Text(
-                    text = "موضوعات انتخابی:",
-                    fontSize = 10.5.sp,
-                    color = colors.secondaryText,
-                    fontFamily = IranSansFontFamily
-                )
             }
 
             // 4 Difficulty Levels Box (Right to Left: آسان, متوسط, دشوار, خیلی دشوار)

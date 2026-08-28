@@ -547,13 +547,13 @@ fun Step1ExamStructureScreen(
             // ==========================================
             // 5. BOTTOM ACTIONS: ادامه به مرحله بعد / انصراف
             // ==========================================
-            Spacer(modifier = Modifier.height(2.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
             Button(
                 onClick = onNextStep,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(46.dp)
+                    .height(48.dp)
                     .testTag("step1_next_button"),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6366F1)),
                 shape = RoundedCornerShape(14.dp)
@@ -567,23 +567,28 @@ fun Step1ExamStructureScreen(
                 )
             }
 
-            TextButton(
+            Button(
                 onClick = onCancel,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(38.dp)
-                    .testTag("step1_cancel_button")
+                    .height(44.dp)
+                    .testTag("step1_cancel_button"),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFEF4444),
+                    contentColor = Color.White
+                ),
+                shape = RoundedCornerShape(12.dp)
             ) {
                 Text(
                     text = "انصراف",
                     fontSize = 12.5.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFFEF4444),
+                    color = Color.White,
                     fontFamily = IranSansFontFamily
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(28.dp))
         }
     }
 }

@@ -40,7 +40,7 @@ class BuildExamWizardTest {
         composeTestRule.onNodeWithText("مرحله ۱: انتخاب ساختار آزمون").assertExists()
         composeTestRule.onNodeWithText("۱. ساختار آزمون").assertExists()
         composeTestRule.onNodeWithText("۲. تنظیم سوالات").assertExists()
-        composeTestRule.onNodeWithText("۳. ساخت آزمون").assertExists()
+        composeTestRule.onNodeWithText("۳. خلاصه و ساخت آزمون").assertExists()
 
         // 2. Verify Exam Type Selection
         composeTestRule.onAllNodesWithText("نوع آزمون").onFirst().assertExists()
@@ -103,13 +103,6 @@ class BuildExamWizardTest {
         // Verify Step 2 header & stepper
         composeTestRule.onNodeWithText("مرحله ۲: تنظیم سوالات").assertExists()
 
-        // Verify Step 2 summary card (2 rows)
-        composeTestRule.onAllNodesWithText("آزمون تستی").onFirst().assertExists()
-        composeTestRule.onNodeWithText("دهم").assertExists()
-        composeTestRule.onNodeWithText("ریاضی‌فیزیک").assertExists()
-        composeTestRule.onNodeWithText("تعداد کتاب: ۲").assertExists()
-        composeTestRule.onNodeWithText("منبع: تألیفی / کنکور").assertExists()
-
         // Verify Book question cards
         composeTestRule.onNodeWithText("ریاضی دهم").assertExists()
         composeTestRule.onNodeWithText("فصل ۲: تابع").assertExists()
@@ -128,10 +121,11 @@ class BuildExamWizardTest {
         // Verify Navigation buttons
         composeTestRule.onNodeWithTag("step2_next_button").assertExists()
         composeTestRule.onNodeWithTag("step2_prev_button").assertExists()
+        composeTestRule.onNodeWithTag("step2_cancel_button").assertExists()
 
         // Navigate to Step 3
         composeTestRule.onNodeWithTag("step2_next_button").performScrollTo().performClick()
-        composeTestRule.onNodeWithText("مرحله ۳: ساخت آزمون").assertExists()
-        composeTestRule.onNodeWithTag("start_exam_button").assertExists()
+        composeTestRule.onNodeWithText("مرحله ۳: خلاصه و ساخت آزمون").assertExists()
+        composeTestRule.onNodeWithTag("step3_build_exam_button").assertExists()
     }
 }

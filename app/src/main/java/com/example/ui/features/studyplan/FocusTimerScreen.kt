@@ -35,8 +35,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -650,26 +652,14 @@ fun FocusTimerScreen(navController: NavController, taskId: String) {
                         }
                     }
 
-                    // Center Header Title & Subtitle
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
-                    ) {
-                        Text(
-                            text = "تمرکز و مطالعه",
-                            fontFamily = IranSansFontFamily,
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = PlanNavy
-                        )
-                        Text(
-                            text = "الان روی این تسک تمرکز کن",
-                            fontFamily = IranSansFontFamily,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Normal,
-                            color = PlanMuted
-                        )
-                    }
+                    // Center Header Title
+                    Text(
+                        text = "تمرکز و مطالعه",
+                        fontFamily = IranSansFontFamily,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = PlanNavy
+                    )
 
                     // Left in RTL: Settings (Gear) Button
                     Surface(
@@ -702,136 +692,83 @@ fun FocusTimerScreen(navController: NavController, taskId: String) {
                     border = BorderStroke(1.dp, Color(0xFFF0F2F7)),
                     shadowElevation = 1.dp
                 ) {
-                    val visualConfig = getSubjectVisualConfig(bookName.ifBlank { taskSubtitle }, bookName)
-                    Row(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                            .padding(horizontal = 18.dp, vertical = 14.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        // Left box in RTL (Book Icon + Subject Tag)
-                        Surface(
-                            modifier = Modifier
-                                .size(width = 72.dp, height = 76.dp)
-                                .clip(RoundedCornerShape(18.dp)),
-                            shape = RoundedCornerShape(18.dp),
-                            color = visualConfig.containerBg
-                        ) {
-                            Column(
-                                modifier = Modifier.fillMaxSize(),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
-                            ) {
-                                Icon(
-                                    imageVector = visualConfig.icon,
-                                    contentDescription = null,
-                                    tint = visualConfig.iconTint,
-                                    modifier = Modifier.size(26.dp)
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = visualConfig.title,
-                                    fontFamily = IranSansFontFamily,
-                                    fontSize = 11.5.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = visualConfig.iconTint,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
+                        Text(
+                            text = taskTitle.ifBlank { "حل تمرین‌های درس" },
+                            fontFamily = IranSansFontFamily,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = PlanNavy,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+
+                        if (chapterSubtitle.isNotBlank()) {
+                            Text(
+                                text = chapterSubtitle,
+                                fontFamily = IranSansFontFamily,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Normal,
+                                color = PlanMuted,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
 
-                        // Right details in RTL
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        // Metadata Row (Rounds & Duration)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = taskTitle.ifBlank { "حل تمرین‌های درس" },
-                                    fontFamily = IranSansFontFamily,
-                                    fontSize = 14.5.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = PlanNavy,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Icon(
-                                    imageVector = Icons.Outlined.BookmarkBorder,
-                                    contentDescription = null,
-                                    tint = PlanNavy.copy(alpha = 0.7f),
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-
-                            if (chapterSubtitle.isNotBlank()) {
-                                Text(
-                                    text = chapterSubtitle,
-                                    fontFamily = IranSansFontFamily,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Normal,
-                                    color = PlanMuted,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-
-                            // Metadata Row (Rounds & Duration)
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Refresh,
-                                        contentDescription = null,
-                                        tint = PlanMuted,
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                    Text(
-                                        text = "دور ${(completedRounds + 1).coerceAtMost(totalRounds).toPersianString()}/${totalRounds.toPersianString()}",
-                                        fontFamily = IranSansFontFamily,
-                                        fontSize = 11.5.sp,
-                                        color = PlanMuted,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                }
-
-                                Box(
-                                    modifier = Modifier
-                                        .width(1.dp)
-                                        .height(12.dp)
-                                        .background(Color(0xFFE2E8F0))
+                                Icon(
+                                    imageVector = Icons.Default.Refresh,
+                                    contentDescription = null,
+                                    tint = PlanMuted,
+                                    modifier = Modifier.size(14.dp)
                                 )
+                                Text(
+                                    text = "دور ${(completedRounds + 1).coerceAtMost(totalRounds).toPersianString()}/${totalRounds.toPersianString()}",
+                                    fontFamily = IranSansFontFamily,
+                                    fontSize = 11.5.sp,
+                                    color = PlanMuted,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
 
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.AccessTime,
-                                        contentDescription = null,
-                                        tint = PlanMuted,
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                    Text(
-                                        text = "${focusMins.toPersianString()} دقیقه",
-                                        fontFamily = IranSansFontFamily,
-                                        fontSize = 11.5.sp,
-                                        color = PlanMuted,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                }
+                            Box(
+                                modifier = Modifier
+                                    .width(1.dp)
+                                    .height(12.dp)
+                                    .background(Color(0xFFE2E8F0))
+                            )
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.AccessTime,
+                                    contentDescription = null,
+                                    tint = PlanMuted,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Text(
+                                    text = "${focusMins.toPersianString()} دقیقه",
+                                    fontFamily = IranSansFontFamily,
+                                    fontSize = 11.5.sp,
+                                    color = PlanMuted,
+                                    fontWeight = FontWeight.Medium
+                                )
                             }
                         }
                     }
@@ -1030,7 +967,7 @@ fun FocusTimerScreen(navController: NavController, taskId: String) {
                     }
                 }
 
-                // 5. ACTION CONTROLS IN CRESCENT ARC (شکل هلال)
+                // 5. ACTION CONTROLS IN CRESCENT ARC (هلال با قوس رو به پایین)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1038,9 +975,9 @@ fun FocusTimerScreen(navController: NavController, taskId: String) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Right in RTL: Settings (offset down to form crescent)
+                    // Right in RTL: Settings (elevated up in downward arc)
                     Column(
-                        modifier = Modifier.offset(y = 12.dp),
+                        modifier = Modifier.offset(y = (-14).dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
@@ -1073,9 +1010,9 @@ fun FocusTimerScreen(navController: NavController, taskId: String) {
                         )
                     }
 
-                    // Reset Button (offset slightly down)
+                    // Reset Button (intermediate height)
                     Column(
-                        modifier = Modifier.offset(y = 4.dp),
+                        modifier = Modifier.offset(y = (-2).dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
@@ -1111,9 +1048,9 @@ fun FocusTimerScreen(navController: NavController, taskId: String) {
                         )
                     }
 
-                    // Center Hero Button: Play / Pause (elevated at center of crescent)
+                    // Center Hero Button: Play / Pause (lowest point of downward arc)
                     Column(
-                        modifier = Modifier.offset(y = (-6).dp),
+                        modifier = Modifier.offset(y = 16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
@@ -1150,9 +1087,9 @@ fun FocusTimerScreen(navController: NavController, taskId: String) {
                         }
                     }
 
-                    // Skip Button (offset slightly down)
+                    // Skip Button (intermediate height)
                     Column(
-                        modifier = Modifier.offset(y = 4.dp),
+                        modifier = Modifier.offset(y = (-2).dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
@@ -1203,9 +1140,9 @@ fun FocusTimerScreen(navController: NavController, taskId: String) {
                         )
                     }
 
-                    // Left in RTL: Sound / Music Selection (offset down to form crescent)
+                    // Left in RTL: Sound / Music Selection (elevated up in downward arc)
                     Column(
-                        modifier = Modifier.offset(y = 12.dp),
+                        modifier = Modifier.offset(y = (-14).dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
@@ -1239,151 +1176,120 @@ fun FocusTimerScreen(navController: NavController, taskId: String) {
                     }
                 }
 
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
-                // 6. TASK PROGRESS CARD ("پیشرفت این تسک" - Compact, without "0 از 3", without stats card)
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(18.dp),
-                    color = Color.White,
-                    border = BorderStroke(1.dp, Color(0xFFF0F2F7)),
-                    shadowElevation = 1.dp
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // Right in RTL: Title only
-                            Text(
-                                text = "پیشرفت این تسک",
-                                fontFamily = IranSansFontFamily,
-                                fontSize = 13.5.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = PlanNavy
-                            )
-
-                            // Left in RTL (Remaining rounds flag)
-                            val remRounds = maxOf(0, totalRounds - completedRounds)
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.OutlinedFlag,
-                                    contentDescription = null,
-                                    tint = PlanMuted,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Text(
-                                    text = "$remRounds دور باقی مانده".toPersianNumber(),
-                                    fontFamily = IranSansFontFamily,
-                                    fontSize = 11.5.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = PlanMuted
-                                )
-                            }
-                        }
-
-                        // Linear Progress Bar
-                        val taskProgress = (completedRounds.toFloat() / maxOf(1, totalRounds)).coerceIn(0f, 1f)
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(6.dp)
-                                .clip(RoundedCornerShape(100.dp))
-                                .background(Color(0xFFF1F5F9))
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth(fraction = maxOf(0.02f, taskProgress))
-                                    .fillMaxHeight()
-                                    .clip(RoundedCornerShape(100.dp))
-                                    .background(PlanPurple)
-                            )
-                        }
-                    }
-                }
-
-                // 7. BOTTOM ENCOURAGEMENT BANNER ("عالی پیش می‌ری ✨")
+                // 6. BOTTOM COMPLETION & MOTIVATION CARD ("اتمام تسک" - Green Theme & RTL)
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 8.dp),
+                        .padding(bottom = 12.dp),
                     shape = RoundedCornerShape(22.dp),
-                    color = Color(0xFFF5F3FF),
-                    border = BorderStroke(1.dp, Color(0xFFEDE9FE))
+                    color = Color.White,
+                    border = BorderStroke(1.2.dp, Color(0xFFBBF7D0)),
+                    shadowElevation = 2.dp
                 ) {
-                    Row(
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        // Left in RTL: Finish Task Button
-                        Surface(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(14.dp))
-                                .clickable {
-                                    showCompletionSheet = true
-                                },
-                            shape = RoundedCornerShape(14.dp),
-                            color = Color.White,
-                            border = BorderStroke(1.dp, PlanPurple.copy(alpha = 0.5f))
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Celebration,
-                                    contentDescription = null,
-                                    tint = PlanPurple,
-                                    modifier = Modifier.size(16.dp)
+                            .background(
+                                Brush.horizontalGradient(
+                                    colors = listOf(
+                                        Color(0xFFF0FDF4),
+                                        Color(0xFFDCFCE7),
+                                        Color(0xFFFFFFFF)
+                                    )
                                 )
-                                Text(
-                                    text = "اتمام تسک",
-                                    fontFamily = IranSansFontFamily,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = PlanPurple
-                                )
-                            }
-                        }
-
-                        // Right in RTL: Cheerful title & subtitle
-                        Column(
-                            horizontalAlignment = Alignment.End,
-                            verticalArrangement = Arrangement.spacedBy(3.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Text(
-                                    text = "عالی پیش می‌ری",
-                                    fontFamily = IranSansFontFamily,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = PlanNavy
-                                )
-                                Text(text = "✨", fontSize = 14.sp)
-                            }
-                            Text(
-                                text = "تمرکزت رو حفظ کن، به هدفت نزدیک‌تری!",
-                                fontFamily = IranSansFontFamily,
-                                fontSize = 11.5.sp,
-                                color = PlanMuted,
-                                fontWeight = FontWeight.Normal
                             )
+                            .padding(horizontal = 16.dp, vertical = 14.dp)
+                    ) {
+                        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                // Right in RTL (First element): Encouragement Title, Subtitle & Green Icon
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = Color(0xFFDCFCE7),
+                                        modifier = Modifier.size(38.dp)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(
+                                                imageVector = Icons.Outlined.TaskAlt,
+                                                contentDescription = null,
+                                                tint = Color(0xFF15803D),
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                        }
+                                    }
+
+                                    Column(
+                                        horizontalAlignment = Alignment.Start,
+                                        verticalArrangement = Arrangement.spacedBy(3.dp)
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            Text(
+                                                text = "عالی پیش می‌ری",
+                                                fontFamily = IranSansFontFamily,
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color(0xFF14532D)
+                                            )
+                                            Text(text = "✨", fontSize = 13.sp)
+                                        }
+                                        Text(
+                                            text = "پایان مطالعه یا ثبت پیشرفت",
+                                            fontFamily = IranSansFontFamily,
+                                            fontSize = 11.5.sp,
+                                            color = Color(0xFF15803D).copy(alpha = 0.85f),
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
+                                }
+
+                                // Left in RTL (Second element): Green Finish Task Action Button
+                                Button(
+                                    onClick = { showCompletionSheet = true },
+                                    shape = RoundedCornerShape(16.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFF16A34A),
+                                        contentColor = Color.White
+                                    ),
+                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+                                    elevation = ButtonDefaults.buttonElevation(
+                                        defaultElevation = 2.dp,
+                                        pressedElevation = 0.dp
+                                    ),
+                                    modifier = Modifier.testTag("timer_complete_task_btn")
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.CheckCircle,
+                                            contentDescription = null,
+                                            tint = Color.White,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Text(
+                                            text = "اتمام تسک",
+                                            fontFamily = IranSansFontFamily,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
