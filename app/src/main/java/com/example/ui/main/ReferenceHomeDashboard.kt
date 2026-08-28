@@ -43,6 +43,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -139,7 +140,7 @@ fun ReferenceHomeDashboard(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             HomeTopHeader(
                 isGuest = isGuest,
@@ -157,11 +158,6 @@ fun ReferenceHomeDashboard(
                     onRetry = { reload++ }
                 )
             } else {
-                HomeStatsRow(
-                    dashboard = dashboard,
-                    loading = loading
-                )
-
                 PerformanceChartCard(
                     range = range,
                     buckets = buckets,
@@ -220,11 +216,11 @@ private fun HomeTopHeader(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 8.dp, bottom = 4.dp),
+            .padding(top = 2.dp, bottom = 0.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        // 1. Profile Avatar + User Name + Subtitle (Start / Right side)
+        // 1. Profile Avatar + User Name (Start / Right side)
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -268,23 +264,14 @@ private fun HomeTopHeader(
                 )
             }
 
-            // User Name & Subtitle Title (without lightning bolt icon)
+            // User Name only (Clean & prominent without title subtitle)
             Column(horizontalAlignment = Alignment.Start) {
                 Text(
                     text = if (isGuest) "مهمان شتاب" else (displayName?.takeIf { it.isNotBlank() } ?: "دانش‌آموز شتاب"),
                     color = HomeNavy,
                     fontFamily = IranSansFontFamily,
                     fontWeight = FontWeight.ExtraBold,
-                    fontSize = 17.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    text = if (isGuest) "ناشگر برتر" else (displayTitle?.takeIf { it.isNotBlank() } ?: "ناشگر برتر"),
-                    color = HomeMuted,
-                    fontFamily = IranSansFontFamily,
-                    fontSize = 10.5.sp,
+                    fontSize = 17.5.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -326,172 +313,6 @@ private fun HomeTopHeader(
             }
         }
     }
-}
-
-@Composable
-private fun HomeStatsRow(
-    dashboard: ProgressDashboardBodyDto?,
-    loading: Boolean
-) {
-    val isLoadingStats = loading && dashboard == null
-
-    val rankValue = dashboard?.rank?.toString()?.toPersianNumber() ?: "۱۵"
-    val leagueValue = dashboard?.league?.nameFa ?: "لول ۴"
-    val studyValue = dashboard?.totalStudySeconds?.let { formatStudyHours(it) } ?: "۱۴۸ ساعت"
-    val pointsValue = dashboard?.points?.let { String.format("%,d", it).toPersianNumber() } ?: "۶,۴۲۰"
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        // 1. رتبه من (Purple) - with loader
-        HomeStatCard(
-            modifier = Modifier.weight(1f),
-            title = "رتبه من",
-            value = rankValue,
-            isLoading = isLoadingStats,
-            shimmerWidth = 24.dp,
-            iconRes = R.drawable.ic_crown,
-            iconTint = Color(0xFF7656F5),
-            cardBackground = Color(0xFFFAF8FF),
-            iconCircleBg = Color(0xFFF3EDFF),
-            accentColor = Color(0xFF9B75F5),
-        )
-
-        // 2. ناشگر برتر / لول (Green) - static
-        HomeStatCard(
-            modifier = Modifier.weight(1f),
-            title = "ناشگر برتر",
-            value = leagueValue,
-            isLoading = false,
-            iconRes = R.drawable.ic_badge_star,
-            iconTint = Color(0xFF21B982),
-            cardBackground = Color(0xFFF4FBF7),
-            iconCircleBg = Color(0xFFE8F7F1),
-            accentColor = Color(0xFF30C58B),
-        )
-
-        // 3. کل مطالعه (Blue) - with loader
-        HomeStatCard(
-            modifier = Modifier.weight(1f),
-            title = "کل مطالعه",
-            value = studyValue,
-            isLoading = isLoadingStats,
-            shimmerWidth = 46.dp,
-            iconRes = R.drawable.ic_clock_blue,
-            iconTint = Color(0xFF3D70EF),
-            cardBackground = Color(0xFFF4F8FF),
-            iconCircleBg = Color(0xFFEAF1FF),
-            accentColor = Color(0xFF4D78EF),
-        )
-
-        // 4. امتیاز من (Yellow) - with loader
-        HomeStatCard(
-            modifier = Modifier.weight(1f),
-            title = "امتیاز من",
-            value = pointsValue,
-            isLoading = isLoadingStats,
-            shimmerWidth = 36.dp,
-            iconRes = R.drawable.ic_trophy_gold,
-            iconTint = Color(0xFFFFB416),
-            cardBackground = Color(0xFFFFFBF0),
-            iconCircleBg = Color(0xFFFFF6DF),
-            accentColor = Color(0xFFFFB914),
-        )
-    }
-}
-
-@Composable
-private fun HomeStatCard(
-    modifier: Modifier,
-    title: String,
-    value: String,
-    isLoading: Boolean = false,
-    shimmerWidth: androidx.compose.ui.unit.Dp = 32.dp,
-    iconRes: Int,
-    iconTint: Color,
-    cardBackground: Color,
-    iconCircleBg: Color,
-    accentColor: Color,
-) {
-    Column(
-        modifier = modifier
-            .height(132.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .background(cardBackground)
-            .padding(horizontal = 4.dp, vertical = 10.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Box(
-            modifier = Modifier
-                .size(44.dp)
-                .background(iconCircleBg, CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                painter = painterResource(iconRes),
-                contentDescription = title,
-                tint = iconTint,
-                modifier = Modifier.size(24.dp)
-            )
-        }
-
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(
-                text = title,
-                color = HomeMuted,
-                fontFamily = IranSansFontFamily,
-                fontWeight = FontWeight.Medium,
-                fontSize = 9.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center,
-            )
-            Spacer(Modifier.height(3.dp))
-            if (isLoading) {
-                Box(
-                    modifier = Modifier
-                        .width(shimmerWidth)
-                        .height(14.dp)
-                        .shimmerEffect(RoundedCornerShape(4.dp))
-                )
-            } else {
-                Text(
-                    text = value,
-                    color = HomeNavy,
-                    fontFamily = IranSansFontFamily,
-                    fontWeight = FontWeight.ExtraBold,
-                    fontSize = 12.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.Center,
-                )
-            }
-        }
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(0.68f)
-                .height(3.5.dp)
-                .background(accentColor.copy(alpha = 0.16f), CircleShape),
-        ) {
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(3.5.dp)
-                    .background(accentColor, CircleShape)
-            )
-        }
-    }
-}
-
-private fun formatStudyHours(seconds: Long): String {
-    val hours = (seconds / 3600).toInt()
-    return if (hours > 0) "${hours.toString().toPersianNumber()} ساعت" else "۱۴۸ ساعت"
 }
 
 @Composable
@@ -542,7 +363,7 @@ private fun PerformanceChartCard(
                         modifier = Modifier.size(22.dp)
                     )
                     Text(
-                        text = "نمای کلی عملکرد",
+                        text = "نمای کلی",
                         color = HomeNavy,
                         fontFamily = IranSansFontFamily,
                         fontWeight = FontWeight.Bold,
@@ -1041,7 +862,7 @@ private fun HomeFeatureGrid(navController: NavController) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(256.dp),
+                .height(216.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // Right Column (in RTL): Stacked Cards "لایـک‌های رقابتی فعال" and "گروه‌های مطالعاتی من"
@@ -1049,7 +870,7 @@ private fun HomeFeatureGrid(navController: NavController) {
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight(),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 // Top Stack Card: لیگ‌های رقابتی فعال
                 FeatureCardLeague(
@@ -1110,27 +931,27 @@ private fun FeatureCardSmartPlan(
 ) {
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(26.dp))
+            .clip(RoundedCornerShape(24.dp))
             .background(
                 Brush.verticalGradient(
-                    listOf(Color(0xFFF9F7FF), Color(0xFFF3EDFE))
+                    listOf(Color(0xFF9868FA), Color(0xFF7543EA))
                 )
             )
             .clickable(onClick = onClick)
             .padding(14.dp)
     ) {
-        // Dart and Target 3D illustration at center/bottom
+        // Dart and Target 3D illustration (shifted slightly leftwards & close to top text)
         Image(
             painter = painterResource(R.drawable.home_plan_dart),
             contentDescription = "برنامه‌ریز هوشمند شتاب",
             contentScale = ContentScale.Fit,
             modifier = Modifier
                 .align(Alignment.Center)
-                .offset(y = 18.dp)
-                .size(132.dp)
+                .offset(x = (-16).dp, y = 2.dp)
+                .size(440.dp)
         )
 
-        // Top Text Titles
+        // Top Text Titles (White & Persian Typography in single line)
         Column(
             modifier = Modifier
                 .align(Alignment.TopStart)
@@ -1139,28 +960,29 @@ private fun FeatureCardSmartPlan(
         ) {
             Text(
                 text = "برنامه‌ریز هوشمند شتاب",
-                color = HomeNavy,
+                color = Color.White,
                 fontFamily = IranSansFontFamily,
                 fontWeight = FontWeight.ExtraBold,
                 fontSize = 14.5.sp,
-                lineHeight = 20.sp,
+                maxLines = 1,
             )
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(3.dp))
             Text(
-                text = "برنامه‌ریزی هوشمند\nو پیشرفت سوال",
-                color = HomeMuted,
+                text = "برنامه‌ریزی هوشمند و پیشرفت سؤال",
+                color = Color.White.copy(alpha = 0.88f),
                 fontFamily = IranSansFontFamily,
+                fontWeight = FontWeight.Medium,
                 fontSize = 10.sp,
-                lineHeight = 14.sp,
+                maxLines = 1,
             )
         }
 
-        // Bottom CTA Button: شروع کنید ›
+        // Bottom-Start (Right side in Persian RTL) White Pill CTA Button: ‹ شروع کنید
         Box(
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .clip(RoundedCornerShape(16.dp))
-                .background(HomePurple)
+                .clip(RoundedCornerShape(50))
+                .background(Color.White)
                 .padding(horizontal = 14.dp, vertical = 7.dp),
             contentAlignment = Alignment.Center
         ) {
@@ -1168,18 +990,18 @@ private fun FeatureCardSmartPlan(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Text(
-                    text = "شروع کنید",
-                    color = Color.White,
-                    fontFamily = IranSansFontFamily,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 10.5.sp
-                )
                 Icon(
                     Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                     contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(14.dp)
+                    tint = Color(0xFF7543EA),
+                    modifier = Modifier.size(15.dp)
+                )
+                Text(
+                    text = "شروع کنید",
+                    color = Color(0xFF7543EA),
+                    fontFamily = IranSansFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 11.sp
                 )
             }
         }
@@ -1202,36 +1024,38 @@ private fun FeatureCardLeague(
             .clickable(onClick = onClick)
             .padding(12.dp)
     ) {
-        // Shield Illustration on Left (End)
+        // Shield Illustration on Left (shifted further to the left edge)
         Image(
-            painter = painterResource(R.drawable.league),
+            painter = painterResource(R.drawable.ic_league_homepage_vector),
             contentDescription = "لیگ‌های رقابتی",
             contentScale = ContentScale.Fit,
             modifier = Modifier
                 .align(Alignment.CenterEnd)
-                .size(76.dp)
+                .offset(x = 6.dp)
+                .size(82.dp)
         )
 
         Column(
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .fillMaxWidth(0.64f)
+                .fillMaxWidth(0.60f)
         ) {
             Text(
-                text = "لایـک‌های\nرقابتی فعال",
+                text = "لیگ‌های رقابتی",
                 color = HomeNavy,
                 fontFamily = IranSansFontFamily,
                 fontWeight = FontWeight.ExtraBold,
-                fontSize = 12.sp,
-                lineHeight = 16.sp
+                fontSize = 12.5.sp,
+                maxLines = 1,
             )
-            Spacer(Modifier.height(3.dp))
+            Spacer(Modifier.height(2.dp))
             Text(
-                text = "تو یک قدم\nجایزت جای پرزیایی",
+                text = "تو یک قدم تا جایزه",
                 color = HomeMuted,
                 fontFamily = IranSansFontFamily,
                 fontSize = 8.5.sp,
-                lineHeight = 12.sp
+                textAlign = TextAlign.Justify,
+                maxLines = 2,
             )
         }
 
@@ -1285,28 +1109,31 @@ private fun FeatureCardStudyGroup(
             contentScale = ContentScale.Fit,
             modifier = Modifier
                 .align(Alignment.CenterEnd)
-                .size(76.dp)
+                .offset(x = 4.dp)
+                .size(78.dp)
         )
 
         Column(
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .fillMaxWidth(0.64f)
+                .fillMaxWidth(0.60f)
         ) {
             Text(
-                text = "گروه‌های\nمطالعاتی من",
+                text = stringResource(R.string.home_study_groups_title),
                 color = HomeNavy,
                 fontFamily = IranSansFontFamily,
                 fontWeight = FontWeight.ExtraBold,
-                fontSize = 12.sp,
-                lineHeight = 16.sp
+                fontSize = 12.5.sp,
+                maxLines = 1,
             )
-            Spacer(Modifier.height(3.dp))
+            Spacer(Modifier.height(2.dp))
             Text(
-                text = "با هم بهتر میتونیم",
+                text = stringResource(R.string.home_study_groups_subtitle),
                 color = HomeMuted,
                 fontFamily = IranSansFontFamily,
-                fontSize = 8.5.sp
+                fontSize = 8.5.sp,
+                lineHeight = 12.sp,
+                maxLines = 2,
             )
         }
 
@@ -1360,29 +1187,31 @@ private fun FeatureCardPeerTrouble(
             contentScale = ContentScale.Fit,
             modifier = Modifier
                 .align(Alignment.CenterEnd)
-                .size(76.dp)
+                .offset(x = 4.dp)
+                .size(78.dp)
         )
 
         Column(
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .fillMaxWidth(0.62f)
+                .fillMaxWidth(0.58f)
         ) {
             Text(
-                text = "پرسش از\nهمکلاسی‌ها",
+                text = stringResource(R.string.home_peer_trouble_title),
                 color = HomeNavy,
                 fontFamily = IranSansFontFamily,
                 fontWeight = FontWeight.ExtraBold,
-                fontSize = 12.sp,
-                lineHeight = 16.sp
+                fontSize = 12.5.sp,
+                maxLines = 1,
             )
-            Spacer(Modifier.height(3.dp))
+            Spacer(Modifier.height(2.dp))
             Text(
-                text = "سوالت رو سریع پاسخ بگیر",
+                text = stringResource(R.string.home_peer_trouble_subtitle),
                 color = HomeMuted,
                 fontFamily = IranSansFontFamily,
-                fontSize = 8.sp,
-                lineHeight = 11.sp
+                fontSize = 8.5.sp,
+                lineHeight = 12.sp,
+                maxLines = 2,
             )
         }
 
@@ -1427,13 +1256,14 @@ private fun FeatureCardExamBuilder(
             contentScale = ContentScale.Fit,
             modifier = Modifier
                 .align(Alignment.CenterEnd)
-                .size(76.dp)
+                .offset(x = 4.dp)
+                .size(78.dp)
         )
 
         Column(
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .fillMaxWidth(0.62f)
+                .fillMaxWidth(0.58f)
         ) {
             Text(
                 text = "آزمون‌ساز",
@@ -1441,13 +1271,16 @@ private fun FeatureCardExamBuilder(
                 fontFamily = IranSansFontFamily,
                 fontWeight = FontWeight.ExtraBold,
                 fontSize = 13.sp,
+                maxLines = 1,
             )
-            Spacer(Modifier.height(3.dp))
+            Spacer(Modifier.height(2.dp))
             Text(
                 text = "آزمون بساز و تمرین کن",
                 color = HomeMuted,
                 fontFamily = IranSansFontFamily,
-                fontSize = 8.5.sp
+                fontSize = 8.5.sp,
+                textAlign = TextAlign.Justify,
+                maxLines = 2,
             )
         }
 

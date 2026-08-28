@@ -45,22 +45,18 @@ class HomeScreenTest {
         // Verify Header
         composeTestRule.onNodeWithText("مهمان شتاب").assertIsDisplayed()
 
-        // Verify Stats Cards and Header Subtitle (which both contain "ناشگر برتر")
-        composeTestRule.onAllNodesWithText("ناشگر برتر").assertCountEquals(2)
-        composeTestRule.onNodeWithText("رتبه من").assertIsDisplayed()
-        composeTestRule.onNodeWithText("کل مطالعه").assertIsDisplayed()
-        composeTestRule.onNodeWithText("امتیاز من").assertIsDisplayed()
-
         // Verify Performance Chart Card Title
-        composeTestRule.onNodeWithText("نمای کلی عملکرد").assertIsDisplayed()
+        composeTestRule.onNodeWithText("نمای کلی").assertIsDisplayed()
         composeTestRule.onNodeWithText("هفته گذشته").assertIsDisplayed()
 
         // Verify Feature Grid Cards
         composeTestRule.onNodeWithText("برنامه‌ریز هوشمند شتاب").assertIsDisplayed()
         composeTestRule.onNodeWithText("شروع کنید").assertIsDisplayed()
-        composeTestRule.onNodeWithText("لایـک‌های\nرقابتی فعال").assertIsDisplayed()
-        composeTestRule.onNodeWithText("گروه‌های\nمطالعاتی من").assertIsDisplayed()
-        composeTestRule.onNodeWithText("پرسش از\nهمکلاسی‌ها").assertIsDisplayed()
+        composeTestRule.onNodeWithText("لیگ‌های رقابتی").assertIsDisplayed()
+        composeTestRule.onNodeWithText("گروه‌های مطالعاتی من").assertIsDisplayed()
+        composeTestRule.onNodeWithText("مطالعه گروهی و رقابت با دوستان").assertIsDisplayed()
+        composeTestRule.onNodeWithText("پرسش از همکلاسی‌ها").assertIsDisplayed()
+        composeTestRule.onNodeWithText("پاسخ سریع به سؤالات و رفع اشکال درسی").assertIsDisplayed()
         composeTestRule.onNodeWithText("آزمون‌ساز").assertIsDisplayed()
     }
 

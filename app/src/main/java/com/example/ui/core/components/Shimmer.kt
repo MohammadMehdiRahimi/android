@@ -216,29 +216,55 @@ fun AcademicReportSkeletonLoading() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .padding(20.dp)
+            .statusBarsPadding(),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
+        // Top Header
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(modifier = Modifier.width(150.dp).height(24.dp).shimmerEffect(RoundedCornerShape(8.dp)))
-            Box(modifier = Modifier.size(36.dp).shimmerEffect(CircleShape))
+            Box(modifier = Modifier.size(48.dp).shimmerEffect(CircleShape))
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(modifier = Modifier.width(100.dp).height(20.dp).shimmerEffect(RoundedCornerShape(6.dp)))
+                Spacer(modifier = Modifier.height(4.dp))
+                Box(modifier = Modifier.width(140.dp).height(12.dp).shimmerEffect(RoundedCornerShape(4.dp)))
+            }
+            Box(modifier = Modifier.size(44.dp).shimmerEffect(RoundedCornerShape(14.dp)))
         }
 
+        // Timeframe Pill
+        Box(modifier = Modifier.width(130.dp).height(36.dp).shimmerEffect(RoundedCornerShape(16.dp)))
+
+        // AI Card
+        SkeletonCard(height = 190.dp, shape = RoundedCornerShape(26.dp))
+
+        // 4 Stat Cards
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            SkeletonCard(height = 90.dp, modifier = Modifier.weight(1f), shape = RoundedCornerShape(20.dp))
-            SkeletonCard(height = 90.dp, modifier = Modifier.weight(1f), shape = RoundedCornerShape(20.dp))
+            repeat(4) {
+                SkeletonCard(height = 78.dp, modifier = Modifier.weight(1f), shape = RoundedCornerShape(18.dp))
+            }
         }
 
-        SkeletonCard(height = 210.dp, shape = RoundedCornerShape(24.dp))
-        SkeletonCard(height = 76.dp, shape = RoundedCornerShape(18.dp))
-        SkeletonCard(height = 76.dp, shape = RoundedCornerShape(18.dp))
+        // 2 Side by Side Strengths / Weaknesses Cards
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            SkeletonCard(height = 160.dp, modifier = Modifier.weight(1f), shape = RoundedCornerShape(20.dp))
+            SkeletonCard(height = 160.dp, modifier = Modifier.weight(1f), shape = RoundedCornerShape(20.dp))
+        }
+
+        // Chart Card
+        SkeletonCard(height = 200.dp, shape = RoundedCornerShape(24.dp))
+
+        // Reports Banner
+        SkeletonCard(height = 110.dp, shape = RoundedCornerShape(24.dp))
     }
 }
 

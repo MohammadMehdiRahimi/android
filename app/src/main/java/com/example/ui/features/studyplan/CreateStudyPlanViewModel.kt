@@ -3,6 +3,8 @@ package com.example.ui.features.studyplan
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.domain.date.DateTransformer
+import com.example.domain.date.JalaliDate
 import com.example.network.ApiClient
 import com.example.network.CreateManualStudyTaskDto
 import com.example.network.NetworkResult
@@ -58,6 +60,7 @@ data class CreateStudyPlanUiState(
         "GRADE_11" to "پایه یازدهم",
         "GRADE_10" to "پایه دهم",
     ),
+    val selectedDate: JalaliDate = DateTransformer.getTodayJalali(),
     val isLoadingCatalog: Boolean = true,
     val subjects: List<SubjectVisualItem> = emptyList(),
     val selectedSubjectId: String = "",
@@ -621,6 +624,10 @@ class CreateStudyPlanViewModel(application: Application) : AndroidViewModel(appl
         _state.update { it.copy(breakDurationMinutes = minutes) }
     }
 
+    fun selectDate(date: JalaliDate) {
+        _state.update { it.copy(selectedDate = date) }
+    }
+
     fun requestPlanSummary() {
         val currentState = _state.value
         val allTopics = currentState.allSelectedTopicIds
@@ -652,7 +659,7 @@ class CreateStudyPlanViewModel(application: Application) : AndroidViewModel(appl
 
     fun confirmAndSubmitPlan(onSuccess: () -> Unit = {}) {
         val currentState = _state.value
-        val today = LocalDate.now(ZoneId.of("Asia/Tehran")).toString()
+        val scheduledDate = currentState.selectedDate.toGregorian().toString()
         val allTopics = currentState.allSelectedTopicIds
 
         if (allTopics.isEmpty()) {
@@ -670,7 +677,7 @@ class CreateStudyPlanViewModel(application: Application) : AndroidViewModel(appl
                 val request = CreateManualStudyTaskDto(
                     requestId = UUID.randomUUID().toString(),
                     topicId = topicId,
-                    scheduledOn = today,
+                    scheduledOn = scheduledDate,
                     periodCount = currentState.periodCount,
                     minutesPerPeriod = currentState.studyDurationMinutes,
                 )

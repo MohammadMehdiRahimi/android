@@ -118,6 +118,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.R
+import com.example.domain.date.DateTransformer
+import com.example.domain.date.JalaliDate
 import com.example.ui.core.toPersianNumber
 import com.example.ui.theme.IranSansFontFamily
 import kotlinx.coroutines.flow.collectLatest
@@ -280,6 +282,14 @@ fun CreateStudyPlanScreen(
                     contentPadding = PaddingValues(top = 4.dp, bottom = 20.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
+                // 0. Section 0: Day & Date Selection (تعیین روز اجرای برنامه)
+                item(key = "scheduled_date_selector") {
+                    CreatePlanDateSelectorSection(
+                        selectedDate = state.selectedDate,
+                        onDateSelected = { viewModel.selectDate(it) },
+                    )
+                }
+
                 // 1. Section 1: Grade & Book Selection (پایه و کتاب) with minimal book names & skeleton loader
                 item(key = "grade_and_book") {
                     GradeAndBookSection(
@@ -394,6 +404,197 @@ fun CreateStudyPlanScreen(
                 )
             }
         }
+    }
+}
+
+/**
+ * Modern Date Selector at the top of CreateStudyPlanScreen
+ */
+@Composable
+fun CreatePlanDateSelectorSection(
+    selectedDate: JalaliDate,
+    onDateSelected: (JalaliDate) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val today = remember { DateTransformer.getTodayJalali() }
+    val tomorrow = remember { today.plusDays(1) }
+    var showCalendarModal by remember { mutableStateOf(false) }
+
+    val isTodaySelected = selectedDate == today
+    val isTomorrowSelected = selectedDate == tomorrow
+    val isCustomSelected = !isTodaySelected && !isTomorrowSelected
+
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .shadow(1.dp, RoundedCornerShape(22.dp), spotColor = Color(0x0D000000))
+            .testTag("create_plan_date_section"),
+        shape = RoundedCornerShape(22.dp),
+        color = Color.White,
+        border = BorderStroke(1.dp, PlanCardBorder),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            // Header Row: Icon, Title, and Formatted Date Tag
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color(0xFFF3EEFF)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.CalendarToday,
+                            contentDescription = null,
+                            tint = PlanPurple,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                    Text(
+                        text = "روز اجرای برنامه",
+                        color = PlanNavy,
+                        fontFamily = IranSansFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                    )
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = Color(0xFFF5F3FF),
+                    border = BorderStroke(1.dp, Color(0xFFDDD6FE)),
+                ) {
+                    Text(
+                        text = DateTransformer.formatFullPersianDate(selectedDate),
+                        color = PlanPurple,
+                        fontFamily = IranSansFontFamily,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                    )
+                }
+            }
+
+            // Quick Selection Chips Row: امروز, فردا, تقویم
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                // 1. امروز
+                Surface(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(38.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { onDateSelected(today) }
+                        .testTag("quick_date_today_btn"),
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (isTodaySelected) PlanPurple else Color(0xFFF8F9FD),
+                    border = if (isTodaySelected) null else BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = "امروز",
+                            color = if (isTodaySelected) Color.White else PlanNavy,
+                            fontFamily = IranSansFontFamily,
+                            fontWeight = if (isTodaySelected) FontWeight.Bold else FontWeight.Medium,
+                            fontSize = 12.5.sp,
+                        )
+                    }
+                }
+
+                // 2. فردا
+                Surface(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(38.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { onDateSelected(tomorrow) }
+                        .testTag("quick_date_tomorrow_btn"),
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (isTomorrowSelected) PlanPurple else Color(0xFFF8F9FD),
+                    border = if (isTomorrowSelected) null else BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = "فردا",
+                            color = if (isTomorrowSelected) Color.White else PlanNavy,
+                            fontFamily = IranSansFontFamily,
+                            fontWeight = if (isTomorrowSelected) FontWeight.Bold else FontWeight.Medium,
+                            fontSize = 12.5.sp,
+                        )
+                    }
+                }
+
+                // 3. تقویم ماهانه
+                Surface(
+                    modifier = Modifier
+                        .weight(1.3f)
+                        .height(38.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { showCalendarModal = true }
+                        .testTag("quick_date_custom_calendar_btn"),
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (isCustomSelected) PlanPurple else Color(0xFFF8F9FD),
+                    border = if (isCustomSelected) null else BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.CalendarToday,
+                            contentDescription = null,
+                            tint = if (isCustomSelected) Color.White else PlanPurple,
+                            modifier = Modifier.size(14.dp),
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = if (isCustomSelected) "${selectedDate.day.toPersianNumber()} ${selectedDate.monthName}" else "تقویم",
+                            color = if (isCustomSelected) Color.White else PlanNavy,
+                            fontFamily = IranSansFontFamily,
+                            fontWeight = if (isCustomSelected) FontWeight.Bold else FontWeight.Medium,
+                            fontSize = 12.sp,
+                            maxLines = 1,
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    if (showCalendarModal) {
+        JalaliMonthCalendarDialog(
+            initialDate = selectedDate,
+            onDismiss = { showCalendarModal = false },
+            onDateSelected = { newDate ->
+                showCalendarModal = false
+                onDateSelected(newDate)
+            },
+        )
     }
 }
 

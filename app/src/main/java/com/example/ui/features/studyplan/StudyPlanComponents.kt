@@ -16,15 +16,20 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.AccessTime
 import androidx.compose.material.icons.outlined.BookmarkBorder
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.MenuBook
@@ -40,11 +45,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -303,7 +310,7 @@ fun StudyPlanCalendarHeader(
     }
 
     if (showDatePickerDialog) {
-        JalaliDatePickerDialog(
+        JalaliMonthCalendarDialog(
             initialDate = selectedJalaliDate,
             onDismiss = { showDatePickerDialog = false },
             onDateSelected = { date ->
@@ -315,17 +322,17 @@ fun StudyPlanCalendarHeader(
 }
 
 /**
- * Interactive Jalali Date Picker Dialog for selecting Year, Month, and Day.
+ * Rich Persian (Jalali) Monthly Calendar Grid Dialog matching design.
  */
 @Composable
-fun JalaliDatePickerDialog(
+fun JalaliMonthCalendarDialog(
     initialDate: JalaliDate,
     onDismiss: () -> Unit,
     onDateSelected: (JalaliDate) -> Unit,
 ) {
-    var selectedYear by remember { mutableIntStateOf(initialDate.year) }
-    var selectedMonth by remember { mutableIntStateOf(initialDate.month) }
-    var selectedDay by remember { mutableIntStateOf(initialDate.day) }
+    var currentYear by remember { mutableIntStateOf(initialDate.year) }
+    var currentMonth by remember { mutableIntStateOf(initialDate.month) }
+    var selectedDate by remember { mutableStateOf(initialDate) }
 
     val monthNames = listOf(
         "فروردین", "اردیبهشت", "خرداد",
@@ -334,186 +341,350 @@ fun JalaliDatePickerDialog(
         "دی", "بهمن", "اسفند",
     )
 
-    val maxDays = when {
-        selectedMonth in 1..6 -> 31
-        selectedMonth in 7..11 -> 30
-        selectedMonth == 12 -> if (JalaliDate.isJalaliLeapYear(selectedYear)) 30 else 29
-        else -> 30
-    }
+    val currentMonthName = if (currentMonth in 1..12) monthNames[currentMonth - 1] else ""
 
-    if (selectedDay > maxDays) {
-        selectedDay = maxDays
+    val gridItems = remember(currentYear, currentMonth, selectedDate) {
+        DateTransformer.generateMonthCalendarDays(currentYear, currentMonth, selectedDate)
     }
 
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth(0.92f)
-                .clip(RoundedCornerShape(26.dp))
-                .testTag("jalali_date_picker_dialog"),
-            shape = RoundedCornerShape(26.dp),
-            color = Color.White,
-        ) {
-            Column(
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+            Surface(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                    .fillMaxWidth(0.92f)
+                    .clip(RoundedCornerShape(26.dp))
+                    .testTag("jalali_month_calendar_dialog"),
+                shape = RoundedCornerShape(26.dp),
+                color = Color.White,
+                shadowElevation = 10.dp,
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Text(
-                        text = stringResource(id = R.string.date_picker_dialog_title),
-                        color = PlanNavy,
-                        fontFamily = IranSansFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.5.sp,
-                    )
-                    IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
-                        Icon(Icons.Filled.Close, contentDescription = "بستن", tint = PlanMuted)
-                    }
-                }
-
-                // Month Grid Selector
-                Text(
-                    text = "انتخاب ماه:",
-                    color = PlanNavy,
-                    fontFamily = IranSansFontFamily,
-                    fontSize = 12.5.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    for (row in 0 until 4) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    // 1. Header: Close (X) on End, Title Centered, Calendar Icon on Start
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        // Right side in RTL (Start): Calendar icon badge
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(CircleShape)
+                                .background(PlanPurpleLight.copy(alpha = 0.6f)),
+                            contentAlignment = Alignment.Center,
                         ) {
-                            for (col in 0 until 3) {
-                                val monthIndex = row * 3 + col + 1
-                                val monthName = monthNames[monthIndex - 1]
-                                val isSelected = selectedMonth == monthIndex
-                                Surface(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .clickable { selectedMonth = monthIndex },
-                                    shape = RoundedCornerShape(10.dp),
-                                    color = if (isSelected) PlanPurple else Color(0xFFF8F9FD),
-                                    border = if (isSelected) null else BorderStroke(1.dp, Color(0xFFE5E7EB)),
-                                ) {
-                                    Text(
-                                        text = monthName,
-                                        color = if (isSelected) Color.White else PlanNavy,
-                                        fontFamily = IranSansFontFamily,
-                                        fontSize = 11.5.sp,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                        textAlign = TextAlign.Center,
-                                        modifier = Modifier.padding(vertical = 7.dp),
-                                    )
+                            Icon(
+                                imageVector = Icons.Outlined.CalendarMonth,
+                                contentDescription = null,
+                                tint = PlanPurple,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+
+                        // Center: Title
+                        Text(
+                            text = "انتخاب تاریخ",
+                            color = PlanNavy,
+                            fontFamily = IranSansFontFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 17.sp,
+                        )
+
+                        // Left side in RTL (End): Close button
+                        IconButton(
+                            onClick = onDismiss,
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFF3F4F6)),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = "بستن",
+                                tint = PlanNavy.copy(alpha = 0.7f),
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(18.dp))
+
+                    // 2. Month Navigator: Left (<), Center Month/Year, Right (>)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        // Next month button (Right in RTL / arrow right)
+                        IconButton(
+                            onClick = {
+                                if (currentMonth < 12) {
+                                    currentMonth++
+                                } else {
+                                    currentMonth = 1
+                                    currentYear++
+                                }
+                            },
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFF5F3FF)),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.KeyboardArrowRight,
+                                contentDescription = "ماه بعد",
+                                tint = PlanPurple,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+
+                        // Center Month & Year Title
+                        Text(
+                            text = "$currentMonthName ${currentYear.toPersianNumber()}",
+                            color = PlanNavy,
+                            fontFamily = IranSansFontFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 17.sp,
+                        )
+
+                        // Prev month button (Left in RTL / arrow left)
+                        IconButton(
+                            onClick = {
+                                if (currentMonth > 1) {
+                                    currentMonth--
+                                } else {
+                                    currentMonth = 12
+                                    currentYear--
+                                }
+                            },
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFF5F3FF)),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.KeyboardArrowLeft,
+                                contentDescription = "ماه قبل",
+                                tint = PlanPurple,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // 3. Weekday Names Row
+                    val weekdays = listOf("شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه")
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        weekdays.forEach { name ->
+                            Text(
+                                text = name,
+                                color = Color(0xFF94A3B8),
+                                fontFamily = IranSansFontFamily,
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 11.5.sp,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    // 4. Days Matrix Grid (Rows of 7 items)
+                    val rows = gridItems.chunked(7)
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        rows.forEach { rowDays ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                rowDays.forEach { cell ->
+                                    val isSelected = cell.jalaliDate == selectedDate
+                                    val isCurrentMonth = cell.isCurrentMonth
+                                    val isToday = cell.isToday
+
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .aspectRatio(1f)
+                                            .padding(2.dp)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(
+                                                when {
+                                                    isSelected -> PlanPurple
+                                                    isToday -> Color(0xFFF3EEFF)
+                                                    else -> Color.Transparent
+                                                }
+                                            )
+                                            .border(
+                                                width = if (isToday && !isSelected) 1.dp else 0.dp,
+                                                color = if (isToday && !isSelected) Color(0xFFDDD6FE) else Color.Transparent,
+                                                shape = RoundedCornerShape(12.dp),
+                                            )
+                                            .clickable {
+                                                selectedDate = cell.jalaliDate
+                                                if (!cell.isCurrentMonth) {
+                                                    currentYear = cell.jalaliDate.year
+                                                    currentMonth = cell.jalaliDate.month
+                                                }
+                                            },
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Text(
+                                            text = cell.dayNumberPersian,
+                                            color = when {
+                                                isSelected -> Color.White
+                                                isToday -> PlanPurple
+                                                isCurrentMonth -> PlanNavy
+                                                else -> Color(0xFFCBD5E1)
+                                            },
+                                            fontFamily = IranSansFontFamily,
+                                            fontWeight = if (isSelected || isToday) FontWeight.Bold else FontWeight.SemiBold,
+                                            fontSize = 14.sp,
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
-                }
 
-                // Day and Year Row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    // Day Selector
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // 5. Selected Date Box
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.Start,
                     ) {
-                        Text(text = "روز:", color = PlanNavy, fontFamily = IranSansFontFamily, fontSize = 12.5.sp)
-                        FilledIconButton(
-                            onClick = { if (selectedDay > 1) selectedDay-- },
-                            modifier = Modifier.size(30.dp),
-                            shape = CircleShape,
-                            colors = IconButtonDefaults.filledIconButtonColors(containerColor = PlanPurpleLight),
-                        ) {
-                            Text("-", color = PlanPurple, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        }
                         Text(
-                            text = selectedDay.toPersianNumber(),
-                            color = PlanNavy,
+                            text = "تاریخ انتخاب شده",
+                            color = Color(0xFF64748B),
                             fontFamily = IranSansFontFamily,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
-                            modifier = Modifier.padding(horizontal = 4.dp),
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 12.sp,
                         )
-                        FilledIconButton(
-                            onClick = { if (selectedDay < maxDays) selectedDay++ },
-                            modifier = Modifier.size(30.dp),
-                            shape = CircleShape,
-                            colors = IconButtonDefaults.filledIconButtonColors(containerColor = PlanPurpleLight),
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
+                            color = Color(0xFFF8F6FE),
+                            border = BorderStroke(1.dp, Color(0xFFEDE9FE)),
                         ) {
-                            Text("+", color = PlanPurple, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.CalendarMonth,
+                                    contentDescription = null,
+                                    tint = PlanPurple,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                                Text(
+                                    text = DateTransformer.formatFullPersianDate(selectedDate),
+                                    color = PlanPurple,
+                                    fontFamily = IranSansFontFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp,
+                                )
+                            }
                         }
                     }
 
-                    // Year Selector
+                    Spacer(modifier = Modifier.height(18.dp))
+
+                    // 6. Action Buttons Row: Right: "تایید" (Confirm), Left: "انصراف" (Cancel)
                     Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        Text(text = "سال:", color = PlanNavy, fontFamily = IranSansFontFamily, fontSize = 12.5.sp)
-                        FilledIconButton(
-                            onClick = { if (selectedYear > 1400) selectedYear-- },
-                            modifier = Modifier.size(30.dp),
-                            shape = CircleShape,
-                            colors = IconButtonDefaults.filledIconButtonColors(containerColor = PlanPurpleLight),
+                        // Confirm Button (Solid Purple)
+                        Button(
+                            onClick = { onDateSelected(selectedDate) },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(46.dp)
+                                .testTag("confirm_calendar_date_button"),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = PlanPurple),
                         ) {
-                            Text("-", color = PlanPurple, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Text(
+                                text = "تایید",
+                                color = Color.White,
+                                fontFamily = IranSansFontFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.5.sp,
+                            )
                         }
-                        Text(
-                            text = selectedYear.toPersianNumber(),
-                            color = PlanNavy,
-                            fontFamily = IranSansFontFamily,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
-                            modifier = Modifier.padding(horizontal = 4.dp),
-                        )
-                        FilledIconButton(
-                            onClick = { if (selectedYear < 1410) selectedYear++ },
-                            modifier = Modifier.size(30.dp),
-                            shape = CircleShape,
-                            colors = IconButtonDefaults.filledIconButtonColors(containerColor = PlanPurpleLight),
+
+                        // Cancel Button (Outlined / Light)
+                        Surface(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(46.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                                .clickable { onDismiss() }
+                                .testTag("cancel_calendar_date_button"),
+                            shape = RoundedCornerShape(14.dp),
+                            color = Color.White,
+                            border = BorderStroke(1.dp, Color(0xFFDDD6FE)),
                         ) {
-                            Text("+", color = PlanPurple, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = "انصراف",
+                                    color = PlanPurple,
+                                    fontFamily = IranSansFontFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.5.sp,
+                                )
+                            }
                         }
                     }
-                }
-
-                Button(
-                    onClick = {
-                        onDateSelected(JalaliDate(selectedYear, selectedMonth, selectedDay))
-                    },
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = PlanPurple),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("confirm_date_picker_button"),
-                ) {
-                    Text(
-                        text = stringResource(id = R.string.date_picker_confirm),
-                        color = Color.White,
-                        fontFamily = IranSansFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.5.sp,
-                    )
                 }
             }
         }
     }
+}
+
+/**
+ * Backwards compatibility alias for JalaliMonthCalendarDialog
+ */
+@Composable
+fun JalaliDatePickerDialog(
+    initialDate: JalaliDate,
+    onDismiss: () -> Unit,
+    onDateSelected: (JalaliDate) -> Unit,
+) {
+    JalaliMonthCalendarDialog(
+        initialDate = initialDate,
+        onDismiss = onDismiss,
+        onDateSelected = onDateSelected,
+    )
 }
 
 @Composable

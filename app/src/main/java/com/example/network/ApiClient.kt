@@ -1,6 +1,7 @@
 package com.example.network
 
 import android.content.Context
+import com.example.API_BASE_URL
 import com.example.BuildConfig
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
@@ -25,7 +26,7 @@ object ApiClient {
     /**
      * Single source of truth for every Shetab backend request.
      */
-    private val baseUrl = normalizeBaseUrl("https://api.weshetab.ir/")
+    private val baseUrl = normalizeBaseUrl(API_BASE_URL)
     
     private var retrofit: Retrofit? = null
     private var okHttpClient: OkHttpClient? = null
@@ -70,6 +71,7 @@ object ApiClient {
             .writeTimeout(30, TimeUnit.SECONDS)
             .cookieJar(cookieJar)
             .authenticator(tokenAuthenticator)
+            .addInterceptor(MockDataInterceptor())
             .addInterceptor(authInterceptor)
             .addInterceptor(responseInterceptor)
             .addInterceptor(loggingInterceptor)
@@ -108,6 +110,8 @@ object ApiClient {
     }
 
     fun getTokenManager(): TokenManager? = tokenManager
+
+    fun getBaseUrl(): String = baseUrl
 
     fun clearSession() {
         SessionManager.logout()

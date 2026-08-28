@@ -2,6 +2,7 @@ package com.example.network
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.example.API_BASE_URL
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -116,7 +117,7 @@ class SessionManagerTest {
         )
 
         val dummyRequest = Request.Builder()
-            .url("https://api.weshetab.ir/users/me")
+            .url("$API_BASE_URL/users/me")
             .build()
 
         val mockChain = object : Interceptor.Chain {

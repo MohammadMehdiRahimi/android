@@ -86,4 +86,9 @@
     <string name="action_retry">تلاش مجدد</string>
     <string name="error_server_unavailable">سرور موقتاً در دسترس نیست. لطفاً دقایقی دیگر دوباره امتحان کنید.</string>
     <string name="error_session_expired">نشست کاربری شما منقضی شده است. لطفاً دوباره وارد شوید.</string>
+    <!-- Home Feature Cards Strings -->
+    <string name="home_study_groups_title">گروه‌های مطالعاتی من</string>
+    <string name="home_study_groups_subtitle">مطالعه گروهی و رقابت با دوستان</string>
+    <string name="home_peer_trouble_title">پرسش از همکلاسی‌ها</string>
+    <string name="home_peer_trouble_subtitle">پاسخ سریع به سؤالات و رفع اشکال درسی</string>
 </resources>
