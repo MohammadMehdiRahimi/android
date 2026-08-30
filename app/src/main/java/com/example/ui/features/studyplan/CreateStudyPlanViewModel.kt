@@ -19,8 +19,6 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.time.LocalDate
-import java.time.ZoneId
 import java.util.UUID
 
 data class SubjectVisualItem(
@@ -50,11 +48,20 @@ data class ChapterBlockState(
     val selectedTopicIds: Set<String> = emptySet(),
 )
 
+data class BookPlanBlock(
+    val bookBlockId: String = UUID.randomUUID().toString(),
+    val selectedGrade: String = "GRADE_12",
+    val selectedGradeName: String = "پایه دوازدهم",
+    val selectedSubjectId: String = "",
+    val chapterBlocks: List<ChapterBlockState> = listOf(ChapterBlockState()),
+    val periodCount: Int = 3,
+    val studyDurationMinutes: Int = 45,
+    val breakDurationMinutes: Int = 15,
+)
+
 data class CreateStudyPlanUiState(
     val userMajor: String = "EXPERIMENTAL",
     val userMajorName: String = "رشته تجربی",
-    val selectedGrade: String = "GRADE_12",
-    val selectedGradeName: String = "پایه دوازدهم",
     val grades: List<Pair<String, String>> = listOf(
         "GRADE_12" to "پایه دوازدهم",
         "GRADE_11" to "پایه یازدهم",
@@ -62,29 +69,26 @@ data class CreateStudyPlanUiState(
     ),
     val selectedDate: JalaliDate = DateTransformer.getTodayJalali(),
     val isLoadingCatalog: Boolean = true,
-    val subjects: List<SubjectVisualItem> = emptyList(),
-    val selectedSubjectId: String = "",
-    val chapterBlocks: List<ChapterBlockState> = emptyList(),
-    val periodCount: Int = 3,
-    val isManualTiming: Boolean = false,
-    val studyDurationMinutes: Int = 45,
-    val breakDurationMinutes: Int = 15,
+    val subjectsByGrade: Map<String, List<SubjectVisualItem>> = emptyMap(),
+    val bookBlocks: List<BookPlanBlock> = emptyList(),
     val isSummaryModalVisible: Boolean = false,
     val isSubmitting: Boolean = false,
     val errorMessage: String? = null,
     val successMessage: String? = null,
 ) {
-    val selectedSubject: SubjectVisualItem?
-        get() = subjects.firstOrNull { it.id == selectedSubjectId } ?: subjects.firstOrNull()
+    fun getSubjectsForGrade(gradeKey: String): List<SubjectVisualItem> {
+        return subjectsByGrade[gradeKey] ?: emptyList()
+    }
 
-    val allSelectedTopicIds: Set<String>
-        get() = chapterBlocks.flatMap { it.selectedTopicIds }.toSet()
-
-    val selectedTopicCount: Int
-        get() = allSelectedTopicIds.size
+    val totalSelectedTopicCount: Int
+        get() = bookBlocks.sumOf { book ->
+            book.chapterBlocks.sumOf { it.selectedTopicIds.size }
+        }
 
     val totalEstimatedMinutes: Int
-        get() = periodCount * (studyDurationMinutes + breakDurationMinutes)
+        get() = bookBlocks.sumOf { book ->
+            book.periodCount * (book.studyDurationMinutes + book.breakDurationMinutes)
+        }
 
     val totalHours: Int
         get() = totalEstimatedMinutes / 60
@@ -127,31 +131,42 @@ class CreateStudyPlanViewModel(application: Application) : AndroidViewModel(appl
     init {
         val savedMajor = tokenManager.getUserMajor()
         val majorName = mapMajorToPersian(savedMajor)
-        val initialGrade = _state.value.selectedGrade
         val defaultSubjects = buildDefaultSubjects(majorName)
-        val cached = StudyPlanCatalogCache.get(initialGrade, savedMajor ?: "EXPERIMENTAL")
-        val effectiveSubjects = if (!cached.isNullOrEmpty()) cached else defaultSubjects
-        val firstSub = effectiveSubjects.first()
-        val initialBlock = ChapterBlockState(
-            blockId = "init_block_1",
-            selectedChapterId = "",
-            selectedTopicIds = emptySet(),
+        val initialMap = mapOf(
+            "GRADE_12" to defaultSubjects,
+            "GRADE_11" to defaultSubjects,
+            "GRADE_10" to defaultSubjects,
+        )
+        val firstSub = defaultSubjects.first()
+
+        val initialBook = BookPlanBlock(
+            bookBlockId = "book_block_init_1",
+            selectedGrade = "GRADE_12",
+            selectedGradeName = "پایه دوازدهم",
+            selectedSubjectId = firstSub.id,
+            chapterBlocks = listOf(
+                ChapterBlockState(
+                    blockId = "init_ch_1",
+                    selectedChapterId = "",
+                    selectedTopicIds = emptySet(),
+                )
+            ),
+            periodCount = 3,
+            studyDurationMinutes = 45,
+            breakDurationMinutes = 15,
         )
 
         _state.update {
             it.copy(
                 userMajor = savedMajor ?: "EXPERIMENTAL",
                 userMajorName = majorName,
-                subjects = effectiveSubjects,
-                selectedSubjectId = firstSub.id,
-                chapterBlocks = listOf(initialBlock),
-                isLoadingCatalog = cached == null,
+                subjectsByGrade = initialMap,
+                bookBlocks = listOf(initialBook),
+                isLoadingCatalog = true,
             )
         }
 
-        if (cached == null) {
-            loadCatalog(initialGrade)
-        }
+        loadCatalogForAllGrades()
     }
 
     private fun cleanBookNameToMinimal(raw: String): String {
@@ -174,7 +189,7 @@ class CreateStudyPlanViewModel(application: Application) : AndroidViewModel(appl
         }
     }
 
-    private fun loadCatalog(targetGrade: String = _state.value.selectedGrade) {
+    private fun loadCatalogForAllGrades() {
         viewModelScope.launch {
             val userMajor = _state.value.userMajor
             val userMajorName = _state.value.userMajorName
@@ -193,41 +208,35 @@ class CreateStudyPlanViewModel(application: Application) : AndroidViewModel(appl
 
                 val mappedSubjects = mapCatalogToSubjects(catalogBody, effectiveMajorName)
                 if (mappedSubjects.isNotEmpty()) {
-                    StudyPlanCatalogCache.put(targetGrade, userMajor, mappedSubjects)
-                    val firstSubject = mappedSubjects.first()
-                    val initialBlock = ChapterBlockState(
-                        blockId = UUID.randomUUID().toString(),
-                        selectedChapterId = "",
-                        selectedTopicIds = emptySet(),
+                    val newSubjectsMap = mapOf(
+                        "GRADE_12" to mappedSubjects,
+                        "GRADE_11" to mappedSubjects,
+                        "GRADE_10" to mappedSubjects,
                     )
-
-                    _state.update {
-                        it.copy(
+                    _state.update { current ->
+                        val updatedBooks = current.bookBlocks.map { book ->
+                            val currentGradeSubjects = newSubjectsMap[book.selectedGrade] ?: mappedSubjects
+                            val validSubjectId = if (currentGradeSubjects.any { it.id == book.selectedSubjectId }) {
+                                book.selectedSubjectId
+                            } else {
+                                currentGradeSubjects.firstOrNull()?.id ?: ""
+                            }
+                            book.copy(selectedSubjectId = validSubjectId)
+                        }
+                        current.copy(
                             isLoadingCatalog = false,
                             userMajorName = effectiveMajorName,
-                            subjects = mappedSubjects,
-                            selectedSubjectId = firstSubject.id,
-                            chapterBlocks = listOf(initialBlock),
+                            subjectsByGrade = newSubjectsMap,
+                            bookBlocks = updatedBooks,
                         )
                     }
                     return@launch
                 }
             }
 
-            // Fallback to rich default educational catalog based on user's field
-            StudyPlanCatalogCache.put(targetGrade, userMajor, defaultSubjects)
-            val firstSub = defaultSubjects.first()
-            val initialBlock = ChapterBlockState(
-                blockId = UUID.randomUUID().toString(),
-                selectedChapterId = "",
-                selectedTopicIds = emptySet(),
-            )
             _state.update {
                 it.copy(
                     isLoadingCatalog = false,
-                    subjects = defaultSubjects,
-                    selectedSubjectId = firstSub.id,
-                    chapterBlocks = listOf(initialBlock),
                 )
             }
         }
@@ -235,7 +244,7 @@ class CreateStudyPlanViewModel(application: Application) : AndroidViewModel(appl
 
     fun retryCatalog() {
         _state.update { it.copy(isLoadingCatalog = true, errorMessage = null) }
-        loadCatalog(_state.value.selectedGrade)
+        loadCatalogForAllGrades()
     }
 
     private fun buildDefaultSubjects(majorName: String): List<SubjectVisualItem> {
@@ -502,145 +511,249 @@ class CreateStudyPlanViewModel(application: Application) : AndroidViewModel(appl
         }
     }
 
-    fun selectGrade(gradeKey: String, gradeName: String) {
-        val userMajor = _state.value.userMajor
-        val userMajorName = _state.value.userMajorName
-        val defaultSubjects = buildDefaultSubjects(userMajorName)
-        val cached = StudyPlanCatalogCache.get(gradeKey, userMajor)
-        val effectiveSubjects = if (!cached.isNullOrEmpty()) cached else defaultSubjects
-        val firstSub = effectiveSubjects.first()
-        val initialBlock = ChapterBlockState(
-            blockId = UUID.randomUUID().toString(),
-            selectedChapterId = "",
-            selectedTopicIds = emptySet(),
-        )
+    fun selectDate(date: JalaliDate) {
+        _state.update { it.copy(selectedDate = date) }
+    }
 
-        _state.update {
-            it.copy(
-                selectedGrade = gradeKey,
+    // --- Multi-Book Actions ---
+
+    fun addBookBlock() {
+        _state.update { current ->
+            val currentGrade = current.bookBlocks.lastOrNull()?.selectedGrade ?: "GRADE_12"
+            val gradeName = current.grades.firstOrNull { it.first == currentGrade }?.second ?: "پایه دوازدهم"
+            val subjects = current.getSubjectsForGrade(currentGrade)
+            val firstSubId = subjects.firstOrNull()?.id ?: ""
+
+            val newBlock = BookPlanBlock(
+                bookBlockId = UUID.randomUUID().toString(),
+                selectedGrade = currentGrade,
                 selectedGradeName = gradeName,
-                subjects = effectiveSubjects,
-                selectedSubjectId = firstSub.id,
-                chapterBlocks = listOf(initialBlock),
-                isLoadingCatalog = cached == null,
+                selectedSubjectId = firstSubId,
+                chapterBlocks = listOf(
+                    ChapterBlockState(
+                        blockId = UUID.randomUUID().toString(),
+                        selectedChapterId = "",
+                        selectedTopicIds = emptySet(),
+                    )
+                ),
+                periodCount = 3,
+                studyDurationMinutes = 45,
+                breakDurationMinutes = 15,
             )
-        }
-
-        if (cached == null) {
-            loadCatalog(gradeKey)
-        }
-    }
-
-    fun selectSubject(subjectId: String) {
-        _state.update { current ->
-            val initialBlock = ChapterBlockState(
-                blockId = UUID.randomUUID().toString(),
-                selectedChapterId = "",
-                selectedTopicIds = emptySet(),
-            )
-            current.copy(
-                selectedSubjectId = subjectId,
-                chapterBlocks = listOf(initialBlock),
-            )
+            current.copy(bookBlocks = current.bookBlocks + newBlock)
         }
     }
 
-    fun addChapterBlock() {
+    fun removeBookBlock(bookBlockId: String) {
         _state.update { current ->
-            val newBlock = ChapterBlockState(
-                blockId = UUID.randomUUID().toString(),
-                selectedChapterId = "",
-                selectedTopicIds = emptySet(),
-            )
-            current.copy(chapterBlocks = current.chapterBlocks + newBlock)
-        }
-    }
-
-    fun removeChapterBlock(blockId: String) {
-        _state.update { current ->
-            if (current.chapterBlocks.size > 1) {
-                current.copy(chapterBlocks = current.chapterBlocks.filterNot { it.blockId == blockId })
+            if (current.bookBlocks.size > 1) {
+                current.copy(bookBlocks = current.bookBlocks.filterNot { it.bookBlockId == bookBlockId })
             } else {
                 current
             }
         }
     }
 
-    fun selectChapterForBlock(blockId: String, chapterId: String) {
+    fun selectGradeForBook(bookBlockId: String, gradeKey: String, gradeName: String) {
         _state.update { current ->
-            val updatedBlocks = current.chapterBlocks.map { block ->
-                if (block.blockId == blockId) {
-                    block.copy(
-                        selectedChapterId = chapterId,
-                        selectedTopicIds = emptySet(),
+            val updated = current.bookBlocks.map { book ->
+                if (book.bookBlockId == bookBlockId) {
+                    val subjects = current.getSubjectsForGrade(gradeKey)
+                    val firstSub = subjects.firstOrNull()?.id ?: ""
+                    book.copy(
+                        selectedGrade = gradeKey,
+                        selectedGradeName = gradeName,
+                        selectedSubjectId = firstSub,
+                        chapterBlocks = listOf(
+                            ChapterBlockState(
+                                blockId = UUID.randomUUID().toString(),
+                                selectedChapterId = "",
+                                selectedTopicIds = emptySet(),
+                            )
+                        ),
                     )
                 } else {
-                    block
+                    book
                 }
             }
-            current.copy(chapterBlocks = updatedBlocks)
+            current.copy(bookBlocks = updated)
         }
     }
 
-    fun toggleTopicForBlock(blockId: String, topicId: String) {
+    fun selectSubjectForBook(bookBlockId: String, subjectId: String) {
         _state.update { current ->
-            val updatedBlocks = current.chapterBlocks.map { block ->
-                if (block.blockId == blockId) {
-                    val updated = if (block.selectedTopicIds.contains(topicId)) {
-                        block.selectedTopicIds - topicId
-                    } else {
-                        block.selectedTopicIds + topicId
-                    }
-                    block.copy(selectedTopicIds = updated)
+            val updated = current.bookBlocks.map { book ->
+                if (book.bookBlockId == bookBlockId) {
+                    book.copy(
+                        selectedSubjectId = subjectId,
+                        chapterBlocks = listOf(
+                            ChapterBlockState(
+                                blockId = UUID.randomUUID().toString(),
+                                selectedChapterId = "",
+                                selectedTopicIds = emptySet(),
+                            )
+                        ),
+                    )
                 } else {
-                    block
+                    book
                 }
             }
-            current.copy(chapterBlocks = updatedBlocks)
+            current.copy(bookBlocks = updated)
         }
     }
 
-    fun incrementPeriod() {
-        _state.update {
-            if (it.periodCount < 20) it.copy(periodCount = it.periodCount + 1) else it
+    fun addChapterBlockToBook(bookBlockId: String) {
+        _state.update { current ->
+            val updated = current.bookBlocks.map { book ->
+                if (book.bookBlockId == bookBlockId) {
+                    val newChBlock = ChapterBlockState(
+                        blockId = UUID.randomUUID().toString(),
+                        selectedChapterId = "",
+                        selectedTopicIds = emptySet(),
+                    )
+                    book.copy(chapterBlocks = book.chapterBlocks + newChBlock)
+                } else {
+                    book
+                }
+            }
+            current.copy(bookBlocks = updated)
         }
     }
 
-    fun decrementPeriod() {
-        _state.update {
-            if (it.periodCount > 1) it.copy(periodCount = it.periodCount - 1) else it
+    fun removeChapterBlockFromBook(bookBlockId: String, chapterBlockId: String) {
+        _state.update { current ->
+            val updated = current.bookBlocks.map { book ->
+                if (book.bookBlockId == bookBlockId) {
+                    if (book.chapterBlocks.size > 1) {
+                        book.copy(chapterBlocks = book.chapterBlocks.filterNot { it.blockId == chapterBlockId })
+                    } else {
+                        book
+                    }
+                } else {
+                    book
+                }
+            }
+            current.copy(bookBlocks = updated)
         }
     }
 
-    fun setManualTiming(enabled: Boolean) {
-        _state.update { it.copy(isManualTiming = enabled) }
+    fun selectChapterForBookBlock(bookBlockId: String, chapterBlockId: String, chapterId: String) {
+        _state.update { current ->
+            val updated = current.bookBlocks.map { book ->
+                if (book.bookBlockId == bookBlockId) {
+                    val newChBlocks = book.chapterBlocks.map { ch ->
+                        if (ch.blockId == chapterBlockId) {
+                            ch.copy(
+                                selectedChapterId = chapterId,
+                                selectedTopicIds = emptySet(),
+                            )
+                        } else {
+                            ch
+                        }
+                    }
+                    book.copy(chapterBlocks = newChBlocks)
+                } else {
+                    book
+                }
+            }
+            current.copy(bookBlocks = updated)
+        }
     }
 
-    fun setStudyDuration(minutes: Int) {
-        _state.update { it.copy(studyDurationMinutes = minutes) }
+    fun toggleTopicForBookBlock(bookBlockId: String, chapterBlockId: String, topicId: String) {
+        _state.update { current ->
+            val updated = current.bookBlocks.map { book ->
+                if (book.bookBlockId == bookBlockId) {
+                    val newChBlocks = book.chapterBlocks.map { ch ->
+                        if (ch.blockId == chapterBlockId) {
+                            val newTopics = if (ch.selectedTopicIds.contains(topicId)) {
+                                ch.selectedTopicIds - topicId
+                            } else {
+                                ch.selectedTopicIds + topicId
+                            }
+                            ch.copy(selectedTopicIds = newTopics)
+                        } else {
+                            ch
+                        }
+                    }
+                    book.copy(chapterBlocks = newChBlocks)
+                } else {
+                    book
+                }
+            }
+            current.copy(bookBlocks = updated)
+        }
     }
 
-    fun setBreakDuration(minutes: Int) {
-        _state.update { it.copy(breakDurationMinutes = minutes) }
+    // --- Direct Open Timing Controls ---
+
+    fun incrementPeriodForBook(bookBlockId: String) {
+        _state.update { current ->
+            val updated = current.bookBlocks.map { book ->
+                if (book.bookBlockId == bookBlockId && book.periodCount < 20) {
+                    book.copy(periodCount = book.periodCount + 1)
+                } else {
+                    book
+                }
+            }
+            current.copy(bookBlocks = updated)
+        }
     }
 
-    fun selectDate(date: JalaliDate) {
-        _state.update { it.copy(selectedDate = date) }
+    fun decrementPeriodForBook(bookBlockId: String) {
+        _state.update { current ->
+            val updated = current.bookBlocks.map { book ->
+                if (book.bookBlockId == bookBlockId && book.periodCount > 1) {
+                    book.copy(periodCount = book.periodCount - 1)
+                } else {
+                    book
+                }
+            }
+            current.copy(bookBlocks = updated)
+        }
     }
+
+    fun setStudyDurationForBook(bookBlockId: String, minutes: Int) {
+        _state.update { current ->
+            val updated = current.bookBlocks.map { book ->
+                if (book.bookBlockId == bookBlockId) {
+                    book.copy(studyDurationMinutes = minutes)
+                } else {
+                    book
+                }
+            }
+            current.copy(bookBlocks = updated)
+        }
+    }
+
+    fun setBreakDurationForBook(bookBlockId: String, minutes: Int) {
+        _state.update { current ->
+            val updated = current.bookBlocks.map { book ->
+                if (book.bookBlockId == bookBlockId) {
+                    book.copy(breakDurationMinutes = minutes)
+                } else {
+                    book
+                }
+            }
+            current.copy(bookBlocks = updated)
+        }
+    }
+
+    // --- Summary & Submission ---
 
     fun requestPlanSummary() {
         val currentState = _state.value
-        val allTopics = currentState.allSelectedTopicIds
-        if (allTopics.isEmpty()) {
-            val errorMsg = "لطفاً حداقل یک مبحث برای مطالعه انتخاب کنید."
+        val totalTopics = currentState.totalSelectedTopicCount
+        if (totalTopics == 0) {
+            val errorMsg = "لطفاً حداقل یک مبحث برای مطالعه در یکی از کتاب‌ها انتخاب کنید."
             _state.update { it.copy(errorMessage = errorMsg) }
             viewModelScope.launch { _events.emit(CreateStudyPlanEvent.ShowError(errorMsg)) }
             return
         }
 
-        val totalMinutes = currentState.periodCount * currentState.studyDurationMinutes
+        val totalMinutes = currentState.totalEstimatedMinutes
         if (totalMinutes > 1440) {
-            val errorMsg = "مجموع زمان مطالعه نمی‌تواند بیش از ۲۴ ساعت (۱۴۴۰ دقیقه) باشد."
+            val errorMsg = "مجموع زمان کل مطالعه نمی‌تواند بیش از ۲۴ ساعت (۱۴۴۰ دقیقه) باشد."
             _state.update { it.copy(errorMessage = errorMsg) }
             viewModelScope.launch { _events.emit(CreateStudyPlanEvent.ShowError(errorMsg)) }
             return
@@ -660,9 +773,24 @@ class CreateStudyPlanViewModel(application: Application) : AndroidViewModel(appl
     fun confirmAndSubmitPlan(onSuccess: () -> Unit = {}) {
         val currentState = _state.value
         val scheduledDate = currentState.selectedDate.toGregorian().toString()
-        val allTopics = currentState.allSelectedTopicIds
 
-        if (allTopics.isEmpty()) {
+        val allRequests = mutableListOf<CreateManualStudyTaskDto>()
+        for (book in currentState.bookBlocks) {
+            val bookTopicIds = book.chapterBlocks.flatMap { it.selectedTopicIds }.distinct()
+            for (topicId in bookTopicIds) {
+                allRequests.add(
+                    CreateManualStudyTaskDto(
+                        requestId = UUID.randomUUID().toString(),
+                        topicId = topicId,
+                        scheduledOn = scheduledDate,
+                        periodCount = book.periodCount,
+                        minutesPerPeriod = book.studyDurationMinutes,
+                    )
+                )
+            }
+        }
+
+        if (allRequests.isEmpty()) {
             _state.update { it.copy(isSummaryModalVisible = false) }
             return
         }
@@ -673,15 +801,7 @@ class CreateStudyPlanViewModel(application: Application) : AndroidViewModel(appl
             var lastErrorMessage: String? = null
             var successCount = 0
 
-            for (topicId in allTopics) {
-                val request = CreateManualStudyTaskDto(
-                    requestId = UUID.randomUUID().toString(),
-                    topicId = topicId,
-                    scheduledOn = scheduledDate,
-                    periodCount = currentState.periodCount,
-                    minutesPerPeriod = currentState.studyDurationMinutes,
-                )
-
+            for (request in allRequests) {
                 val result = safeApiCall { api.createManualStudyTask(request) }
                 when (result) {
                     is NetworkResult.Success -> {

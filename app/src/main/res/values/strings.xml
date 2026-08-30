@@ -73,6 +73,10 @@
     <string name="create_plan_approx_total_time">زمان تقریبی کل</string>
     <string name="create_plan_approx_label">تقریباً</string>
     <string name="create_plan_add_chapter_action">اضافه کردن فصل</string>
+    <string name="create_plan_add_book_action">افزودن کتاب جدید به برنامه</string>
+    <string name="create_plan_remove_book">حذف کتاب</string>
+    <string name="create_plan_select_book_hint">انتخاب کتاب</string>
+    <string name="create_plan_date_title">تاریخ اجرای برنامه</string>
     <!-- Task Completion Confirm Strings -->
     <string name="task_confirm_complete_title">تأیید انجام وظیفه</string>
     <string name="task_confirm_complete_message">آیا مطمئن هستید که می‌خواهید این تسک را به عنوان «انجام شده» ثبت کنید؟</string>
