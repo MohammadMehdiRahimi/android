@@ -1,0 +1,55 @@
+# Tasks: Add Study Session Screen Redesign (چک‌لیست مراحل پیاده‌سازی)
+
+- [x] 1. **Data Models & State Definitions**
+    - [x] 1.1 Define `StudySubjectItem`, `StudyTopicItem`, and `StudyChapterItem` data structures in `CreateStudyPlanViewModel.kt` (or dedicated model file).
+    - [x] 1.2 Update `CreateStudyPlanUiState` to hold state for selected grade, subjects list, active chapters list, study/rest duration minutes, cycle count, and submission status.
+
+- [x] 2. **ViewModel & Domain Integration**
+    - [x] 2.1 Implement user action handlers in ViewModel:
+        - `selectGrade(grade: String)`
+        - `selectSubject(subjectId: String)`
+        - `selectChapter(chapterIndex: Int, chapterTitle: String)`
+        - `selectTopic(chapterIndex: Int, topicId: String)`
+        - `addChapterSection()`
+        - `incrementCycleCount()` and `decrementCycleCount()` (bounded e.g. 1 to 10)
+        - `updateStudyDuration(minutes: Int)`
+        - `updateRestDuration(minutes: Int)`
+        - `submitSession(onSuccess: () -> Unit)`
+    - [x] 2.2 Connect `submitSession` to `CreateManualStudyTaskUseCase` or local repository persistence to insert study tasks into daily schedule.
+
+- [x] 3. **UI Components Construction (`CreateStudyPlanScreen.kt`)**
+    - [x] 3.1 Build `AddStudySessionHeader`:
+        - Circular back button on the left (with RTL support)
+        - Centered title ("افزودن جلسه") and subtitle ("جزئیات جلسه درس و مطالعه را وارد کنید")
+        - Circular purple book icon on the right
+    - [x] 3.2 Build `CourseGradeSection`:
+        - Section header row ("درس و کتاب ۱" + book icon)
+        - Dropdown select pill ("پایه دوازدهم") with arrow and dropdown menu
+    - [x] 3.3 Build `SubjectSelectorChips`:
+        - Horizontal chips for "اقتصاد", "تاریخ", "جامعه شناسی", "جغرافیا"
+        - Active state: purple border, purple text, purple circular check icon
+        - Inactive state: light border, navy text
+    - [x] 3.4 Build `ChapterTopicSection`:
+        - Nested rounded card with lavender/gray background
+        - Header "فصل و مباحث ۱" with clipboard icon
+        - Dropdown selector for chapter title ("۱: کسب‌وکار و کارآفرینی")
+        - Selectable topic radio items ("موفقیت و شکست کسب‌وکارها", "کارآفرینی و نقش")
+    - [x] 3.5 Build `AddChapterButton`:
+        - Lavender background pill button with text "+  اضافه کردن فصل"
+    - [x] 3.6 Build `ScheduleSection`:
+        - Divider and section title "زمان‌بندی و دوره‌های مطالعه" with clock icon
+        - Counter pill with `-`, `۳ دوره` (Persian number), and `+`
+    - [x] 3.7 Build `StudyAndRestSliders`:
+        - Side-by-side controls for "زمان استراحت" (coffee icon, "۱۵ د") and "زمان مطالعه" (book icon, "۴۵ د")
+        - Functional snap sliders with tick marks (۵, ۱۰, ۱۵, ۲۰, ۳۰ and ۱۵, ۳۰, ۴۵, ۶۰, ۹۰)
+    - [x] 3.8 Build `InformationNoticeBox`:
+        - Lavender rounded container with info circle icon and Persian update text
+    - [x] 3.9 Build `BottomActionButtons`:
+        - Primary "ثبت جلسه" button with checkmark icon and purple gradient
+        - Secondary "انصراف" button with duplicate outline icon
+    - [x] 3.10 Remove previous legacy wizard UI code from `CreateStudyPlanScreen.kt` and replace with the new pixel-accurate layout.
+
+- [x] 4. **Testing & Verification**
+    - [x] 4.1 Update / create unit tests for `CreateStudyPlanViewModel` ensuring state transitions, cycle bounds, and slider updates function properly.
+    - [x] 4.2 Update / create Compose tests (`CreateStudyPlanScreenTest` or `AddStudySessionScreenTest`) using Robolectric to verify UI elements, RTL layout, and button clicks.
+    - [x] 4.3 Run `compile_applet` to verify compilation and zero build errors.

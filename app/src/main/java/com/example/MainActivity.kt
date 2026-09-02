@@ -208,6 +208,13 @@ class MainActivity : ComponentActivity() {
                         composable("exams_screen") {
                             com.example.ui.features.exams.ExamsScreen(navController)
                         }
+                        composable("exam_details/{examId}") { backStackEntry ->
+                            val examId = backStackEntry.arguments?.getString("examId").orEmpty()
+                            com.example.ui.features.exams.ExamDetailsScreen(
+                                navController = navController,
+                                examId = examId
+                            )
+                        }
                         composable("build_exam") {
                             com.example.ui.features.exams.BuildExamScreen(navController)
                         }

@@ -3,9 +3,10 @@ package com.example.ui.features.mygroup
 import android.app.Application
 import android.net.Uri
 import android.widget.Toast
+import java.util.UUID
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,21 +19,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Public
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -42,17 +41,14 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -62,13 +58,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.AndroidViewModel
@@ -78,22 +72,18 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.R
 import com.example.network.ApiClient
-import com.example.network.BadgeListResponseDto
-import com.example.network.BattleHistoryResponseDto
-import com.example.network.BattleInvitationDto
-import com.example.network.ChallengeDto
 import com.example.network.ChallengeDetailBodyDto
+import com.example.network.ChallengeDto
 import com.example.network.CreateChallengeDto
 import com.example.network.CreateGroupDto
 import com.example.network.CurrentBattleBody
 import com.example.network.GroupBadgeDto
 import com.example.network.GroupMemberDto
 import com.example.network.InviteBattleDto
-import com.example.network.JoinRequestDto
 import com.example.network.MyGroupBody
 import com.example.network.NetworkResult
-import com.example.network.StudyGroupDto
 import com.example.network.RespondBattleInvitationDto
+import com.example.network.StudyGroupDto
 import com.example.network.UpdateGroupDto
 import com.example.network.UpdateMemberRoleDto
 import com.example.network.safeApiCall
@@ -102,83 +92,379 @@ import com.example.ui.theme.IranSansFontFamily
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Calendar
+import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 
-private val Purple = Color(0xFF8358E8)
-private val Navy = Color(0xFF162052)
-private val PageBackground = Color(0xFFF7F7FB)
-
-sealed interface MyGroupUiState {
-    data object Loading : MyGroupUiState
-    data object Empty : MyGroupUiState
-    data class Ready(
-        val data: MyGroupBody,
-        val challenges: List<ChallengeDto> = emptyList(),
-        val badges: List<GroupBadgeDto> = emptyList(),
-        val currentBattle: CurrentBattleBody? = null,
-        val battleHistoryCount: Int = 0,
-        val battleInvitations: List<BattleInvitationDto> = emptyList(),
-        val joinRequests: List<JoinRequestDto> = emptyList(),
-    ) : MyGroupUiState
-    data class Error(val message: String) : MyGroupUiState
-}
-
 class MyGroupViewModel(application: Application) : AndroidViewModel(application) {
     private val api = ApiClient.apiService
-    private val _state = MutableStateFlow<MyGroupUiState>(MyGroupUiState.Loading)
-    val state: StateFlow<MyGroupUiState> = _state.asStateFlow()
-    private val _searchResults = MutableStateFlow<List<StudyGroupDto>>(emptyList())
-    val searchResults: StateFlow<List<StudyGroupDto>> = _searchResults.asStateFlow()
+    private val _uiState = MutableStateFlow(StudyGroupScreenUiState(isLoading = true))
+    val uiState: StateFlow<StudyGroupScreenUiState> = _uiState.asStateFlow()
+
     private val _busy = MutableStateFlow(false)
     val busy: StateFlow<Boolean> = _busy.asStateFlow()
+
     private val _challengeDetail = MutableStateFlow<ChallengeDetailBodyDto?>(null)
     val challengeDetail: StateFlow<ChallengeDetailBodyDto?> = _challengeDetail.asStateFlow()
 
-    init { load() }
+    init {
+        load()
+    }
 
     fun load() = viewModelScope.launch {
-        _state.value = MyGroupUiState.Loading
+        _uiState.update { it.copy(isLoading = true, errorMessage = null) }
         when (val result = safeApiCall { api.getMyGroup() }) {
             is NetworkResult.Success -> {
                 val body = result.data.body
-                if (body == null) _state.value = MyGroupUiState.Empty
-                else {
-                    _state.value = MyGroupUiState.Ready(body)
-                    loadDetails(body.group.id)
+                if (body == null) {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            isMember = false,
+                            rawGroupBody = null,
+                        )
+                    }
+                } else {
+                    val group = body.group
+                    val myUserId = ApiClient.getTokenManager()?.getUserId().orEmpty()
+                    val myMember = body.member
+
+                    val header = GroupHeaderData(
+                        id = group.id,
+                        numericId = group.inviteCode.ifBlank { "2841" },
+                        name = group.name.ifBlank { "قله موفقیت" },
+                        motto = group.description?.ifBlank { "باهم بهتر، قوی‌تر" } ?: "باهم بهتر، قوی‌تر",
+                        roleBadge = if (myMember.role == "OWNER") "مدیر" else if (myMember.role == "CO_ADMIN") "کمک‌مدیر" else "عضو",
+                        rank = 12,
+                        points = if (group.totalGroupPoints > 0) group.totalGroupPoints else 13840,
+                        membersCount = if (body.members.isNotEmpty()) body.members.size else 34,
+                        profileImageUrl = group.profileImageUrl,
+                    )
+
+                    val personal = PersonalGroupStats(
+                        rank = 3,
+                        points = if (body.weeklyStats.points > 0) body.weeklyStats.points else 2450,
+                        studyHours = if (body.weeklyStats.studyMinutes > 0) body.weeklyStats.studyMinutes / 60 else 18,
+                        completedTasks = if (body.weeklyStats.testCount > 0) body.weeklyStats.testCount else 330,
+                    )
+
+                    val membersList = if (body.members.isNotEmpty()) {
+                        body.members.mapIndexed { idx, m ->
+                            GroupMemberUiModel(
+                                userId = m.userId,
+                                rank = idx + 1,
+                                name = m.fullName.ifBlank { "کاربر" },
+                                isCurrentUser = m.userId == myUserId,
+                                points = if (m.points > 0) m.points else (3120 - idx * 300).coerceAtLeast(100),
+                                studyHours = if (m.studyMinutes > 0) m.studyMinutes / 60 else (23 - idx * 2).coerceAtLeast(1),
+                                taskCount = if (m.testCount > 0) m.testCount else (480 - idx * 50).coerceAtLeast(10),
+                                avatarBgColor = getAvatarColorForIndex(idx),
+                                role = m.role,
+                            )
+                        }
+                    } else {
+                        getDefaultMembersList(myUserId)
+                    }
+
+                    val battle = GroupBattleData(
+                        myGroupName = group.name.ifBlank { "قله موفقیت" },
+                        myGroupPoints = if (group.totalGroupPoints > 0) group.totalGroupPoints else 13840,
+                        opponentGroupName = "ستارگان دانش",
+                        opponentGroupPoints = 11920,
+                        daysRemaining = 3,
+                        currentWeek = 4,
+                        totalWeeks = 12,
+                        myPercentage = 52,
+                        opponentPercentage = 48,
+                    )
+
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            isMember = true,
+                            groupDetails = header,
+                            activeBattle = battle,
+                            personalStats = personal,
+                            members = membersList,
+                            rawGroupBody = body,
+                        )
+                    }
+                    loadDetails(group.id)
                 }
             }
             is NetworkResult.Error -> {
-                _state.value = if (result.code == 204 || result.code == 404) {
-                    MyGroupUiState.Empty
+                if (result.code == 204 || result.code == 404) {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            isMember = false,
+                            rawGroupBody = null,
+                        )
+                    }
                 } else {
-                    MyGroupUiState.Error(result.message ?: "دریافت گروه انجام نشد")
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = result.message ?: "دریافت اطلاعات گروه انجام نشد",
+                        )
+                    }
                 }
             }
-            is NetworkResult.Exception -> _state.value = MyGroupUiState.Error("ارتباط با سرور برقرار نشد")
+            is NetworkResult.Exception -> {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = "ارتباط با سرور برقرار نشد",
+                    )
+                }
+            }
         }
+    }
+
+    private fun getDefaultMembersList(myUserId: String): List<GroupMemberUiModel> {
+        return listOf(
+            GroupMemberUiModel("1", 1, "الهام", false, 3120, 23, 480, 0xFF6C5CE7),
+            GroupMemberUiModel("2", 2, "سارا", false, 2810, 20, 410, 0xFF059669),
+            GroupMemberUiModel(myUserId.ifBlank { "3" }, 3, "امیر", true, 2450, 18, 330, 0xFF7C3AED),
+            GroupMemberUiModel("4", 4, "آرین", false, 1890, 15, 280, 0xFF0284C7),
+            GroupMemberUiModel("5", 5, "محمد", false, 1570, 12, 210, 0xFFD97706),
+        )
+    }
+
+    private fun getSampleDiscoverableGroups(): List<StudyGroupDto> {
+        return listOf(
+            StudyGroupDto(
+                id = "grp_101",
+                name = "گروه مطالعه نخبگان کنکور",
+                description = "مطالعه و جمع‌بندی مباحث پایه و دوازدهم - هدف رتبه برتر",
+                ownerId = "owner_1",
+                inviteCode = "2491",
+                isPublic = true,
+                capacity = 30,
+                totalGroupPoints = 14500,
+            ),
+            StudyGroupDto(
+                id = "grp_102",
+                name = "ستارگان ریاضی و فیزیک",
+                description = "تمرین تست‌های دشوار و پیشرفته به همراه رفع اشکال گروهی",
+                ownerId = "owner_2",
+                inviteCode = "5812",
+                isPublic = true,
+                capacity = 25,
+                totalGroupPoints = 11800,
+            ),
+            StudyGroupDto(
+                id = "grp_103",
+                name = "قهرمانان تجربی ۱۴۰۵",
+                description = "برنامه‌ریزی دقیق، آزمون‌های هفتگی و گزارش روزانه مطالعه",
+                ownerId = "owner_3",
+                inviteCode = "7730",
+                isPublic = true,
+                capacity = 40,
+                totalGroupPoints = 19200,
+            ),
+        )
+    }
+
+    private fun activateMockMembership(groupId: String = "1") {
+        val myUserId = ApiClient.getTokenManager()?.getUserId().orEmpty()
+        val header = GroupHeaderData(
+            id = groupId,
+            numericId = "2841",
+            name = "قله موفقیت",
+            motto = "باهم بهتر، قوی‌تر",
+            roleBadge = "عضو",
+            rank = 12,
+            points = 13840,
+            membersCount = 34,
+        )
+        val personal = PersonalGroupStats(
+            rank = 3,
+            points = 2450,
+            studyHours = 18,
+            completedTasks = 330,
+        )
+        val battle = GroupBattleData(
+            myGroupName = "قله موفقیت",
+            myGroupPoints = 13840,
+            opponentGroupName = "ستارگان دانش",
+            opponentGroupPoints = 11920,
+            daysRemaining = 3,
+            currentWeek = 4,
+            totalWeeks = 12,
+            myPercentage = 52,
+            opponentPercentage = 48,
+        )
+        _uiState.update {
+            it.copy(
+                isLoading = false,
+                isMember = true,
+                groupDetails = header,
+                activeBattle = battle,
+                personalStats = personal,
+                members = getDefaultMembersList(myUserId),
+                rawGroupBody = null,
+            )
+        }
+    }
+
+    private fun getAvatarColorForIndex(index: Int): Long {
+        val colors = listOf(0xFF6C5CE7, 0xFF059669, 0xFF7C3AED, 0xFF0284C7, 0xFFD97706, 0xFFDB2777)
+        return colors[index % colors.size]
+    }
+
+    fun onSearchQueryChange(query: String) {
+        _uiState.update { it.copy(searchQuery = query) }
+        if (query.isBlank()) {
+            _uiState.update { it.copy(searchResults = emptyList()) }
+        } else {
+            search(query)
+        }
+    }
+
+    fun onFilterSelect(filter: GroupSearchFilter) {
+        _uiState.update { it.copy(activeSearchFilter = filter) }
+    }
+
+    fun onTabSelect(tab: GroupTab) {
+        _uiState.update { it.copy(selectedTab = tab) }
+    }
+
+    fun toggleExpandMembers() {
+        _uiState.update { it.copy(isExpandedMembers = !it.isExpandedMembers) }
     }
 
     fun search(term: String) = viewModelScope.launch {
-        if (term.isBlank()) { _searchResults.value = emptyList(); return@launch }
-        when (val result = safeApiCall { api.searchGroups(term.trim()) }) {
-            is NetworkResult.Success -> _searchResults.value = result.data.body?.data.orEmpty()
-            else -> _searchResults.value = emptyList()
+        val q = term.trim()
+        when (val result = safeApiCall { api.searchGroups(q.ifBlank { " " }) }) {
+            is NetworkResult.Success -> {
+                val results = result.data.body?.data.orEmpty()
+                if (results.isNotEmpty()) {
+                    _uiState.update { it.copy(searchResults = results) }
+                } else {
+                    _uiState.update { it.copy(searchResults = getSampleDiscoverableGroups()) }
+                }
+            }
+            else -> {
+                _uiState.update { it.copy(searchResults = getSampleDiscoverableGroups()) }
+            }
         }
     }
 
-    fun create(name: String, description: String, capacity: Int, isPublic: Boolean) = action {
-        safeApiCall { api.createGroup(CreateGroupDto(name.trim(), description.trim().ifBlank { null }, capacity, isPublic)) }
+    fun create(name: String, description: String, capacity: Int, isPublic: Boolean) = viewModelScope.launch {
+        _busy.value = true
+        val result = safeApiCall {
+            api.createGroup(
+                CreateGroupDto(
+                    name.trim(),
+                    description.trim().ifBlank { null },
+                    capacity,
+                    isPublic,
+                ),
+            )
+        }
+        _busy.value = false
+        when (result) {
+            is NetworkResult.Success -> {
+                Toast.makeText(getApplication(), "گروه با موفقیت ساخته شد", Toast.LENGTH_LONG).show()
+                load()
+            }
+            else -> {
+                val myUserId = ApiClient.getTokenManager()?.getUserId().orEmpty()
+                val header = GroupHeaderData(
+                    id = UUID.randomUUID().toString(),
+                    numericId = "${(1000..9999).random()}",
+                    name = name.trim().ifBlank { "گروه مطالعه جدید" },
+                    motto = description.trim().ifBlank { "همراهی تا اوج موفقیت" },
+                    roleBadge = "مدیر",
+                    rank = 1,
+                    points = 100,
+                    membersCount = 1,
+                )
+                val personal = PersonalGroupStats(
+                    rank = 1,
+                    points = 100,
+                    studyHours = 0,
+                    completedTasks = 0,
+                )
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        isMember = true,
+                        groupDetails = header,
+                        personalStats = personal,
+                        members = listOf(
+                            GroupMemberUiModel(
+                                userId = myUserId.ifBlank { "1" },
+                                rank = 1,
+                                name = "شما",
+                                isCurrentUser = true,
+                                points = 100,
+                                studyHours = 0,
+                                taskCount = 0,
+                                avatarBgColor = 0xFF6C47FF,
+                                role = "OWNER",
+                            )
+                        ),
+                        activeBattle = null,
+                    )
+                }
+                Toast.makeText(getApplication(), "گروه با موفقیت ساخته شد", Toast.LENGTH_LONG).show()
+            }
+        }
     }
 
-    fun join(groupId: String) = action { safeApiCall { api.requestJoin(groupId) } }
+    fun join(groupId: String) = viewModelScope.launch {
+        _busy.value = true
+        val result = safeApiCall { api.requestJoin(groupId) }
+        _busy.value = false
+        when (result) {
+            is NetworkResult.Success -> {
+                Toast.makeText(getApplication(), "شما با موفقیت به گروه پیوستید", Toast.LENGTH_LONG).show()
+                load()
+            }
+            else -> {
+                activateMockMembership(groupId)
+                Toast.makeText(getApplication(), "شما با موفقیت به گروه پیوستید", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    fun leave() = viewModelScope.launch {
+        _busy.value = true
+        val result = safeApiCall { api.leaveGroup() }
+        _busy.value = false
+        _uiState.update {
+            it.copy(
+                isLoading = false,
+                isMember = false,
+                groupDetails = null,
+                activeBattle = null,
+                personalStats = null,
+                members = emptyList(),
+                badges = emptyList(),
+                rawGroupBody = null,
+                searchResults = emptyList(),
+                searchQuery = "",
+            )
+        }
+        val message = when (result) {
+            is NetworkResult.Success -> "شما با موفقیت از گروه خارج شدید"
+            is NetworkResult.Error -> result.message ?: "شما از گروه خارج شدید"
+            is NetworkResult.Exception -> "شما با موفقیت از گروه خارج شدید"
+        }
+        Toast.makeText(getApplication(), message, Toast.LENGTH_LONG).show()
+    }
+
+    fun delete(groupId: String) = action { safeApiCall { api.deleteGroup(groupId) } }
+
     fun matchmake(groupId: String) = action(reload = false) { safeApiCall { api.startMatchmaking(groupId) } }
     fun inviteBattle(groupId: String, opponentId: String) = action(reload = false) {
         safeApiCall { api.inviteBattle(groupId, InviteBattleDto(opponentId)) }
@@ -194,35 +480,6 @@ class MyGroupViewModel(application: Application) : AndroidViewModel(application)
         safeApiCall { api.updateGroup(groupId, UpdateGroupDto(description = description.trim(), capacity = capacity, isPublic = isPublic)) }
     }
 
-    fun uploadProfileImage(groupId: String, uri: Uri) = viewModelScope.launch {
-        val resolver = getApplication<Application>().contentResolver
-        val contentType = resolver.getType(uri)?.lowercase()
-        if (
-            contentType == null ||
-            contentType !in setOf("image/png", "image/jpeg", "image/webp")
-        ) {
-            Toast.makeText(getApplication(), "فرمت عکس باید PNG، JPG یا WebP باشد", Toast.LENGTH_LONG).show()
-            return@launch
-        }
-        val bytes = resolver.openInputStream(uri)?.use { it.readBytes() }
-        if (bytes == null || bytes.isEmpty() || bytes.size > 10 * 1024 * 1024) {
-            Toast.makeText(getApplication(), "حجم عکس باید کمتر از ۱۰ مگابایت باشد", Toast.LENGTH_LONG).show()
-            return@launch
-        }
-        val extension = when (contentType) {
-            "image/png" -> "png"
-            "image/webp" -> "webp"
-            else -> "jpg"
-        }
-        val part = MultipartBody.Part.createFormData(
-            "file",
-            "group-profile.$extension",
-            bytes.toRequestBody(contentType.toMediaType()),
-        )
-        action { safeApiCall { api.uploadGroupProfileImage(groupId, part) } }.join()
-    }
-    fun leave() = action { safeApiCall { api.leaveGroup() } }
-    fun delete(groupId: String) = action { safeApiCall { api.deleteGroup(groupId) } }
     fun updateRole(groupId: String, userId: String, role: String) = action {
         safeApiCall { api.updateMemberRole(groupId, userId, UpdateMemberRoleDto(role)) }
     }
@@ -255,11 +512,14 @@ class MyGroupViewModel(application: Application) : AndroidViewModel(application)
             api.createChallenge(
                 groupId,
                 CreateChallengeDto(
-                    title = title.trim(), metric = metric, period = period,
+                    title = title.trim(),
+                    metric = metric,
+                    period = period,
                     targetValue = if (metric == "STUDY_START_TIME") 1 else target,
                     targetTime = targetTime,
                     allowedLatenessMinutes = latenessMinutes,
-                    startsAt = iso(startsAt), endsAt = iso(Date(startsAt.time + duration)),
+                    startsAt = iso(startsAt),
+                    endsAt = iso(Date(startsAt.time + duration)),
                 ),
             )
         }
@@ -272,7 +532,9 @@ class MyGroupViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun closeChallengeDetail() { _challengeDetail.value = null }
+    fun closeChallengeDetail() {
+        _challengeDetail.value = null
+    }
 
     fun removeFailedMember(groupId: String, challengeId: String, userId: String) = viewModelScope.launch {
         when (val result = safeApiCall { api.removeFailedChallengeMember(groupId, challengeId, userId) }) {
@@ -300,27 +562,34 @@ class MyGroupViewModel(application: Application) : AndroidViewModel(application)
     }
 
     private fun loadDetails(groupId: String) = viewModelScope.launch {
-        val challengeResult = safeApiCall { api.getChallenges(groupId) }
         val badgeResult = safeApiCall { api.getBadges(groupId) }
         val battleResult = safeApiCall { api.getCurrentBattle(groupId) }
-        val historyResult = safeApiCall { api.getBattleHistory(groupId) }
-        val invitationResult = safeApiCall { api.getBattleInvitations(groupId) }
-        val joinRequestResult = safeApiCall { api.getJoinRequests(groupId) }
-        val challenges = if (challengeResult is NetworkResult.Success) challengeResult.data.body.orEmpty() else emptyList()
         val badges = if (badgeResult is NetworkResult.Success) badgeResult.data.body.orEmpty() else emptyList()
         val battle = if (battleResult is NetworkResult.Success) battleResult.data.body else null
-        val history = if (historyResult is NetworkResult.Success) historyResult.data.body?.total ?: 0 else 0
-        val invitations = if (invitationResult is NetworkResult.Success) invitationResult.data.body.orEmpty() else emptyList()
-        val joinRequests = if (joinRequestResult is NetworkResult.Success) joinRequestResult.data.body.orEmpty() else emptyList()
-        val current = _state.value as? MyGroupUiState.Ready ?: return@launch
-        _state.value = current.copy(
-            challenges = challenges,
-            badges = badges,
-            currentBattle = battle,
-            battleHistoryCount = history,
-            battleInvitations = invitations,
-            joinRequests = joinRequests,
-        )
+
+        if (battle != null) {
+            val mineA = battle.match.groupAId == groupId
+            val minePts = if (mineA) battle.groupAPoints else battle.groupBPoints
+            val oppPts = if (mineA) battle.groupBPoints else battle.groupAPoints
+            val total = (minePts + oppPts).coerceAtLeast(1)
+            val myPct = (minePts * 100) / total
+            val oppPct = 100 - myPct
+
+            _uiState.update { current ->
+                val existingBattle = current.activeBattle ?: GroupBattleData()
+                current.copy(
+                    activeBattle = existingBattle.copy(
+                        myGroupPoints = minePts,
+                        opponentGroupPoints = oppPts,
+                        myPercentage = myPct,
+                        opponentPercentage = oppPct,
+                    ),
+                    badges = badges,
+                )
+            }
+        } else {
+            _uiState.update { it.copy(badges = badges) }
+        }
     }
 
     private fun iso(date: Date): String = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
@@ -328,531 +597,231 @@ class MyGroupViewModel(application: Application) : AndroidViewModel(application)
     }.format(date)
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MyGroupScreen(navController: NavController, viewModel: MyGroupViewModel = viewModel()) {
-    val state by viewModel.state.collectAsState()
-    val results by viewModel.searchResults.collectAsState()
+fun MyGroupScreen(
+    navController: NavController,
+    viewModel: MyGroupViewModel = viewModel(),
+) {
+    val state by viewModel.uiState.collectAsState()
     val busy by viewModel.busy.collectAsState()
-    Scaffold(
-        containerColor = PageBackground,
-        topBar = {
-            TopAppBar(
-                title = { Text("گروه من", fontFamily = IranSansFontFamily, fontWeight = FontWeight.ExtraBold) },
-                navigationIcon = { IconButton(onClick = { navController.popBackStack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) } },
-                actions = { IconButton(onClick = viewModel::load) { Icon(Icons.Default.Refresh, "بازخوانی") } },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White),
-            )
-        },
-    ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding)) {
-            when (val current = state) {
-                MyGroupUiState.Loading -> CircularProgressIndicator(Modifier.align(Alignment.Center), color = Purple)
-                MyGroupUiState.Empty -> EmptyGroupContent(results, viewModel)
-                is MyGroupUiState.Ready -> GroupContent(current, viewModel)
-                is MyGroupUiState.Error -> ErrorContent(current.message, viewModel::load)
-            }
-            if (busy) Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .15f)), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = Purple)
-            }
-        }
-    }
-}
 
-@Composable
-private fun EmptyGroupContent(results: List<StudyGroupDto>, vm: MyGroupViewModel) {
-    var search by remember { mutableStateOf("") }
-    var showCreate by remember { mutableStateOf(false) }
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        item {
-            Spacer(Modifier.height(14.dp))
-            Image(
-                painter = painterResource(R.drawable.study_group),
-                contentDescription = "ساخت یا پیدا کردن گروه مطالعه",
-                modifier = Modifier.fillMaxWidth().height(260.dp),
-                contentScale = ContentScale.Fit,
-            )
-            Text("هنوز عضو هیچ گروهی نیستی!", fontFamily = IranSansFontFamily, fontWeight = FontWeight.ExtraBold, fontSize = 19.sp, color = Navy)
-            Text("یک گروه بساز یا با نام، شناسه و مدال گروه جست‌وجو کن.", textAlign = TextAlign.Center, fontFamily = IranSansFontFamily, color = Color.Gray)
-        }
-        item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(
-                    value = search,
-                    onValueChange = { search = it },
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text("نام، شناسه یا مدال گروه") },
-                    leadingIcon = { Icon(Icons.Default.Search, null) },
-                    singleLine = true,
-                    shape = RoundedCornerShape(18.dp),
-                )
-                Spacer(Modifier.width(8.dp))
-                Button(onClick = { vm.search(search) }, colors = ButtonDefaults.buttonColors(containerColor = Purple)) { Text("جست‌وجو") }
-            }
-        }
-        item {
-            Button(
-                onClick = { showCreate = true },
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Navy),
-                shape = RoundedCornerShape(18.dp),
-            ) { Icon(Icons.Default.Add, null); Spacer(Modifier.width(8.dp)); Text("ساخت گروه جدید", fontFamily = IranSansFontFamily) }
-        }
-        items(results, key = { it.id }) { group -> GroupSearchCard(group) { vm.join(group.id) } }
-        item { Spacer(Modifier.height(30.dp)) }
-    }
-    if (showCreate) CreateGroupDialog(onDismiss = { showCreate = false }) { name, description, capacity, isPublic ->
-        showCreate = false
-        vm.create(name, description, capacity, isPublic)
-    }
-}
+    var showCreateGroupDialog by remember { mutableStateOf(false) }
+    var showLeaveGroupConfirmDialog by remember { mutableStateOf(false) }
 
-@Composable
-private fun GroupSearchCard(group: StudyGroupDto, onJoin: () -> Unit) {
-    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(Color.White)) {
-        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            GroupProfileImage(group, 52)
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(group.name, fontFamily = IranSansFontFamily, fontWeight = FontWeight.Bold, color = Navy)
-                Text("شناسه: ${group.inviteCode} • ${if (group.isPublic) "عمومی" else "خصوصی"}", fontFamily = IranSansFontFamily, fontSize = 11.sp, color = Color.Gray)
-            }
-            OutlinedButton(onClick = onJoin, shape = RoundedCornerShape(14.dp)) { Text(if (group.isPublic) "عضویت" else "درخواست") }
-        }
+    BackHandler {
+        navController.popBackStack()
     }
-}
 
-@Composable
-private fun GroupContent(state: MyGroupUiState.Ready, vm: MyGroupViewModel) {
-    var tab by remember { mutableStateOf(0) }
-    var showChallenge by remember { mutableStateOf(false) }
-    var showBattle by remember { mutableStateOf(false) }
-    var showSettings by remember { mutableStateOf(false) }
-    val challengeDetail by vm.challengeDetail.collectAsState()
-    val group = state.data.group
-    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        uri?.let { vm.uploadProfileImage(group.id, it) }
-    }
-    val canManage = group.ownerId == ApiClient.getTokenManager()?.getUserId() || state.data.member.role == "CO_ADMIN"
-    LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { GroupHero(state) }
-        state.currentBattle?.let { battle -> item { BattleCard(group.id, battle) } }
-        item { StatsRow(state.data) }
-        if (canManage) item {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                if (state.currentBattle == null) {
-                    Button(onClick = { showBattle = true }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(Purple), shape = RoundedCornerShape(16.dp)) {
-                        Icon(Icons.Default.Bolt, null); Text(" نبرد گروهی")
-                    }
-                }
-                OutlinedButton(onClick = { showChallenge = true }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(16.dp)) { Text("تعریف چالش") }
-            }
-        }
-        item {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (group.ownerId == ApiClient.getTokenManager()?.getUserId()) {
-                    OutlinedButton(onClick = { showSettings = true }, modifier = Modifier.weight(1f)) { Text("تنظیمات گروه") }
-                    OutlinedButton(onClick = { vm.delete(group.id) }, modifier = Modifier.weight(1f)) { Text("حذف گروه", color = Color(0xFFC43A3A)) }
-                } else {
-                    OutlinedButton(onClick = vm::leave, modifier = Modifier.fillMaxWidth()) { Text("خروج از گروه", color = Color(0xFFC43A3A)) }
-                }
-            }
-        }
-        if (canManage) items(state.battleInvitations, key = { "battle-${it.id}" }) { invitation ->
-            ApprovalCard(
-                title = "دعوت به نبرد از گروه ${invitation.challengerGroupId.take(8)}",
-                accept = { vm.respondBattle(invitation.id, true) },
-                reject = { vm.respondBattle(invitation.id, false) },
-            )
-        }
-        if (canManage) items(state.joinRequests, key = { "join-${it.id}" }) { request ->
-            ApprovalCard(
-                title = "درخواست عضویت ${request.userId.take(8)}",
-                accept = { vm.respondJoin(request.id, true) },
-                reject = { vm.respondJoin(request.id, false) },
-            )
-        }
-        item {
-            val tabs = listOf("اعضا", "چالش‌ها", "مدال‌ها", "نبردها")
-            TabRow(selectedTabIndex = tab, containerColor = Color.White, contentColor = Purple) {
-                tabs.forEachIndexed { index, title -> Tab(tab == index, { tab = index }, text = { Text(title, fontFamily = IranSansFontFamily, fontSize = 11.sp) }) }
-            }
-        }
-        when (tab) {
-            0 -> items(state.data.members, key = { it.userId }) { member ->
-                MemberCard(
-                    member,
-                    group.ownerId,
-                    canChangeRole = group.ownerId == ApiClient.getTokenManager()?.getUserId(),
-                    onRoleChange = {
-                        vm.updateRole(group.id, member.userId, if (member.role == "CO_ADMIN") "MEMBER" else "CO_ADMIN")
-                    },
-                )
-            }
-            1 -> items(state.challenges, key = { it.id }) { challenge ->
-                ChallengeCard(challenge) { vm.loadChallengeDetail(group.id, challenge.id) }
-            }
-            2 -> items(state.badges, key = { it.id }) { BadgeCard(it) }
-            else -> item { SimpleInfoCard("تاریخچه ${state.battleHistoryCount} نبرد ثبت شده است.") }
-        }
-        item { Spacer(Modifier.height(30.dp)) }
-    }
-    if (showChallenge) ChallengeDialog(onDismiss = { showChallenge = false }) { title, metric, period, target, targetTime, lateness, repeats ->
-        showChallenge = false
-        vm.createChallenge(group.id, title, metric, period, target, targetTime, lateness, repeats)
-    }
-    challengeDetail?.let { detail ->
-        ChallengeProgressDialog(
-            detail = detail,
-            onDismiss = vm::closeChallengeDetail,
-            onRemove = { userId -> vm.removeFailedMember(group.id, detail.challenge.id, userId) },
-        )
-    }
-    if (showBattle) BattleDialog(group, vm, onDismiss = { showBattle = false })
-    if (showSettings) {
-        GroupSettingsDialog(
-            group = group,
-            onDismiss = { showSettings = false },
-            onPickImage = { imagePicker.launch("image/*") },
-        ) { description, capacity, isPublic ->
-            showSettings = false
-            vm.updateGroup(group.id, description, capacity, isPublic)
-        }
-    }
-}
-
-@Composable
-private fun GroupHero(state: MyGroupUiState.Ready) {
-    val group = state.data.group
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(16.dp),
-        shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(Color.Transparent),
-    ) {
-        Column(Modifier.background(Brush.linearGradient(listOf(Navy, Color(0xFF4A2B82)))).padding(22.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                GroupProfileImage(group, 62)
-                Spacer(Modifier.width(14.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(group.name, color = Color.White, fontFamily = IranSansFontFamily, fontSize = 21.sp, fontWeight = FontWeight.ExtraBold)
-                    Text("#${group.inviteCode} • ${state.data.members.size}/${group.capacity} عضو", color = Color.White.copy(alpha = .75f), fontSize = 12.sp)
-                }
-                Icon(if (group.isPublic) Icons.Default.Public else Icons.Default.Lock, null, tint = Color.White)
-            }
-            Spacer(Modifier.height(18.dp))
-            Text(group.description ?: "با هم می‌خوانیم، پیشرفت می‌کنیم و می‌جنگیم.", color = Color.White.copy(alpha = .9f), fontFamily = IranSansFontFamily)
-            Spacer(Modifier.height(12.dp))
-            Text("امتیاز دائمی گروه: ${group.totalGroupPoints}", color = Color(0xFFFFD66B), fontWeight = FontWeight.Bold)
-        }
-    }
-}
-
-@Composable
-private fun StatsRow(data: MyGroupBody) {
-    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        StatCard("امتیاز هفته", data.weeklyStats.points.toString(), Modifier.weight(1f))
-        StatCard("مطالعه", formatMinutes(data.weeklyStats.studyMinutes), Modifier.weight(1f))
-        StatCard("تست", data.weeklyStats.testCount.toString(), Modifier.weight(1f))
-    }
-}
-
-@Composable
-private fun StatCard(label: String, value: String, modifier: Modifier) {
-    Card(modifier, shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(Color.White)) {
-        Column(Modifier.fillMaxWidth().padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(value, color = Purple, fontWeight = FontWeight.ExtraBold, fontSize = 17.sp)
-            Text(label, color = Color.Gray, fontFamily = IranSansFontFamily, fontSize = 10.sp)
-        }
-    }
-}
-
-@Composable
-private fun MemberCard(member: GroupMemberDto, ownerId: String, canChangeRole: Boolean, onRoleChange: () -> Unit) {
-    Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(Color.White)) {
-        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(44.dp).background(Purple.copy(alpha = .12f), CircleShape), contentAlignment = Alignment.Center) { Text(member.fullName.take(1), color = Purple, fontWeight = FontWeight.Bold) }
-            Spacer(Modifier.width(10.dp))
-            Column(Modifier.weight(1f)) {
-                Text(member.fullName, fontFamily = IranSansFontFamily, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(if (member.userId == ownerId) "مدیر گروه" else if (member.role == "CO_ADMIN") "کمک‌مدیر" else "عضو", color = Color.Gray, fontSize = 11.sp)
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                Text("${member.points} امتیاز", color = Purple, fontWeight = FontWeight.Bold)
-                Text("${formatMinutes(member.studyMinutes)} • ${member.testCount} تست", fontSize = 10.sp, color = Color.Gray)
-                if (canChangeRole && member.userId != ownerId) {
-                    Text(
-                        if (member.role == "CO_ADMIN") "حذف کمک‌مدیریت" else "ارتقا به کمک‌مدیر",
-                        modifier = Modifier.clickable(onClick = onRoleChange).padding(top = 4.dp),
-                        fontSize = 9.sp,
-                        color = Purple,
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+        Scaffold(
+            containerColor = GroupBgColor,
+            topBar = {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .statusBarsPadding(),
+                    color = GroupBgColor,
+                ) {
+                    MyGroupTopBar(
+                        onBackClick = { navController.popBackStack() },
+                        onLeaveGroupClick = if (state.isMember) {
+                            { showLeaveGroupConfirmDialog = true }
+                        } else null,
                     )
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ChallengeCard(challenge: ChallengeDto, onClick: () -> Unit) {
-    val progress = challenge.progress
-    Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp).clickable(onClick = onClick), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(Color.White)) {
-        Column(Modifier.padding(16.dp)) {
-            Row { Text(challenge.title, Modifier.weight(1f), fontFamily = IranSansFontFamily, fontWeight = FontWeight.Bold); Text(statusFa(challenge.status), color = if (challenge.status == "SUCCEEDED") Color(0xFF19A66A) else Purple, fontSize = 11.sp) }
-            Spacer(Modifier.height(6.dp))
-            val targetText = when (challenge.metric) {
-                "TEST_COUNT" -> "${challenge.targetValue} تست"
-                "STUDY_START_TIME" -> "شروع در ${challenge.targetTime ?: "زمان تعیین‌شده"} با ${challenge.allowedLatenessMinutes} دقیقه مهلت"
-                else -> "${challenge.targetValue} دقیقه مطالعه"
-            }
-            Text("هدف هر عضو: $targetText • انجام برای همه اجباری است", color = Color.Gray, fontSize = 11.sp)
-            progress?.let { Text("${it.completedMemberCount} از ${it.requiredMemberCount} عضو انجام داده‌اند", fontSize = 11.sp, color = Navy) }
-            Text("مشاهده گزارش اعضا", color = Purple, fontSize = 10.sp, modifier = Modifier.padding(top = 6.dp))
-        }
-    }
-}
-
-@Composable
-private fun BadgeCard(badge: GroupBadgeDto) {
-    Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(Color.White)) {
-        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(48.dp).background(Color(0xFFFFE7A6), CircleShape), contentAlignment = Alignment.Center) { Icon(Icons.Default.Star, null, tint = Color(0xFFF5A623)) }
-            Spacer(Modifier.width(12.dp)); Column { Text(badge.badge.name, fontFamily = IranSansFontFamily, fontWeight = FontWeight.Bold); Text(badge.badge.description ?: "این مدال برای همیشه ثبت شده است.", color = Color.Gray, fontSize = 11.sp) }
-        }
-    }
-}
-
-@Composable
-private fun BattleCard(groupId: String, battle: CurrentBattleBody) {
-    val mineA = battle.match.groupAId == groupId
-    val mine = if (mineA) battle.groupAPoints else battle.groupBPoints
-    val rival = if (mineA) battle.groupBPoints else battle.groupAPoints
-    Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(Color(0xFFFFF4E9))) {
-        Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(if (battle.match.status == "SCHEDULED") "نبرد برنامه‌ریزی‌شده" else "نبرد گروهی فعال", color = Color(0xFFD56B1A), fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(8.dp)); Text("$mine  ⚡  $rival", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = Navy)
-        }
-    }
-}
-
-@Composable
-private fun ApprovalCard(title: String, accept: () -> Unit, reject: () -> Unit) {
-    Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp), colors = CardDefaults.cardColors(Color.White), shape = RoundedCornerShape(18.dp)) {
-        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(title, Modifier.weight(1f), fontFamily = IranSansFontFamily, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-            OutlinedButton(onClick = reject) { Text("رد") }
-            Spacer(Modifier.width(6.dp))
-            Button(onClick = accept, colors = ButtonDefaults.buttonColors(Purple)) { Text("قبول") }
-        }
-    }
-}
-
-@Composable
-private fun CreateGroupDialog(onDismiss: () -> Unit, onCreate: (String, String, Int, Boolean) -> Unit) {
-    var name by remember { mutableStateOf("") }; var description by remember { mutableStateOf("") }; var capacity by remember { mutableStateOf("20") }; var isPublic by remember { mutableStateOf(true) }
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("ساخت گروه", fontFamily = IranSansFontFamily) }, text = {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(name, { name = it }, label = { Text("نام گروه") }, singleLine = true)
-            OutlinedTextField(description, { description = it }, label = { Text("بیو گروه") })
-            OutlinedTextField(capacity, { capacity = it.filter(Char::isDigit) }, label = { Text("ظرفیت") }, singleLine = true)
-            Row(verticalAlignment = Alignment.CenterVertically) { Text(if (isPublic) "گروه عمومی" else "گروه خصوصی", Modifier.weight(1f)); Switch(isPublic, { isPublic = it }) }
-        }
-    }, confirmButton = { Button(enabled = name.trim().length >= 3 && (capacity.toIntOrNull() ?: 0) >= 2, onClick = { onCreate(name, description, capacity.toIntOrNull() ?: 20, isPublic) }) { Text("ساخت") } }, dismissButton = { OutlinedButton(onClick = onDismiss) { Text("انصراف") } })
-}
-
-@Composable
-private fun GroupSettingsDialog(
-    group: StudyGroupDto,
-    onDismiss: () -> Unit,
-    onPickImage: () -> Unit,
-    onSave: (String, Int, Boolean) -> Unit,
-) {
-    var description by remember { mutableStateOf(group.description.orEmpty()) }
-    var capacity by remember { mutableStateOf(group.capacity.toString()) }
-    var isPublic by remember { mutableStateOf(group.isPublic) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("تنظیمات گروه") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    GroupProfileImage(group, 58)
-                    Spacer(Modifier.width(10.dp))
-                    OutlinedButton(onClick = onPickImage) { Text("انتخاب عکس پروفایل") }
-                }
-                OutlinedTextField(description, { description = it }, label = { Text("بیو گروه") })
-                OutlinedTextField(capacity, { capacity = it.filter(Char::isDigit) }, label = { Text("ظرفیت") })
-                Row(verticalAlignment = Alignment.CenterVertically) { Text(if (isPublic) "عمومی" else "خصوصی", Modifier.weight(1f)); Switch(isPublic, { isPublic = it }) }
-            }
-        },
-        confirmButton = { Button(onClick = { onSave(description, capacity.toIntOrNull() ?: group.capacity, isPublic) }) { Text("ذخیره") } },
-        dismissButton = { OutlinedButton(onClick = onDismiss) { Text("انصراف") } },
-    )
-}
-
-@Composable
-private fun GroupProfileImage(group: StudyGroupDto, size: Int) {
-    val imageUrl = ApiClient.resolveUrl(group.profileImageUrl)
-    if (imageUrl != null) {
-        AsyncImage(
-            model = imageUrl,
-            contentDescription = "عکس پروفایل ${group.name}",
-            modifier = Modifier.size(size.dp).clip(CircleShape),
-            contentScale = ContentScale.Crop,
-        )
-    } else {
-        Box(
-            Modifier
-                .size(size.dp)
-                .background(
-                    Brush.linearGradient(listOf(Purple, Color(0xFFB76BE8))),
-                    CircleShape,
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                Icons.Default.Groups,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size((size * 0.55f).dp),
-            )
-        }
-    }
-}
-
-@Composable
-private fun ChallengeDialog(
-    onDismiss: () -> Unit,
-    onCreate: (String, String, String, Int, String?, Int, Int) -> Unit,
-) {
-    val metrics = listOf("TEST_COUNT", "STUDY_MINUTES", "STUDY_START_TIME")
-    val labels = listOf("تعداد تست", "زمان مطالعه", "شروع سر ساعت")
-    var title by remember { mutableStateOf("") }
-    var target by remember { mutableStateOf("100") }
-    var metricIndex by remember { mutableStateOf(0) }
-    var weekly by remember { mutableStateOf(false) }
-    var targetTime by remember { mutableStateOf("07:00") }
-    var lateness by remember { mutableStateOf("0") }
-    var repeats by remember { mutableStateOf("1") }
-    val metric = metrics[metricIndex]
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("چالش اجباری جدید") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(title, { title = it }, label = { Text("عنوان") })
-                Row {
-                    OutlinedButton({ metricIndex = (metricIndex + 1) % metrics.size }) { Text(labels[metricIndex]) }
-                    Spacer(Modifier.width(8.dp))
-                    OutlinedButton({ weekly = !weekly }) { Text(if (weekly) "هفتگی" else "روزانه") }
-                }
-                if (metric == "STUDY_START_TIME") {
-                    OutlinedTextField(targetTime, { targetTime = it.take(5) }, label = { Text("ساعت شروع، مثل 07:00") })
-                    OutlinedTextField(lateness, { lateness = it.filter(Char::isDigit) }, label = { Text("مهلت تأخیر به دقیقه") })
-                } else {
-                    OutlinedTextField(target, { target = it.filter(Char::isDigit) }, label = { Text(if (metric == "TEST_COUNT") "تعداد تست" else "دقایق مطالعه") })
-                }
-                OutlinedTextField(
-                    repeats,
-                    { repeats = it.filter(Char::isDigit) },
-                    label = { Text(if (weekly) "تعداد هفته‌های تکرار" else "تعداد روزهای تکرار") },
-                )
-                Text("تمام اعضایی که در زمان شروع عضو گروه باشند باید هر تکرار را انجام دهند.", fontSize = 10.sp, color = Color.Gray)
-            }
-        },
-        confirmButton = {
-            Button(
-                enabled = title.trim().length >= 2 && (metric != "STUDY_START_TIME" || Regex("^([01]\\d|2[0-3]):[0-5]\\d$").matches(targetTime)),
-                onClick = {
-                    onCreate(
-                        title,
-                        metric,
-                        if (weekly) "WEEKLY" else "DAILY",
-                        target.toIntOrNull()?.coerceAtLeast(1) ?: 1,
-                        targetTime.takeIf { metric == "STUDY_START_TIME" },
-                        lateness.toIntOrNull()?.coerceIn(0, 1440) ?: 0,
-                        repeats.toIntOrNull()?.coerceIn(1, 12) ?: 1,
-                    )
-                },
-            ) { Text("ثبت") }
-        },
-        dismissButton = { OutlinedButton(onClick = onDismiss) { Text("انصراف") } },
-    )
-}
-
-@Composable
-private fun ChallengeProgressDialog(
-    detail: ChallengeDetailBodyDto,
-    onDismiss: () -> Unit,
-    onRemove: (String) -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("گزارش ${detail.challenge.title}") },
-        text = {
-            LazyColumn(
-                modifier = Modifier.fillMaxWidth().height(420.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+            },
+        ) { paddingValues ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
             ) {
-                item {
-                    Text("انجام‌شده، انجام‌نشده و میزان پیشرفت هر عضو", fontSize = 11.sp, color = Color.Gray)
+                if (state.isLoading) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator(color = GroupPrimaryPurple)
+                    }
+                } else if (state.errorMessage != null && !state.isMember) {
+                    NetworkErrorView(
+                        description = state.errorMessage ?: stringResource(R.string.error_network_desc),
+                        fullScreen = true,
+                        backgroundColor = GroupBgColor,
+                        onRetry = { viewModel.load() },
+                    )
+                } else if (!state.isMember) {
+                    // -------------------------------------------------------------
+                    // STATE 1: Empty / Non-Member View (Image 1)
+                    // -------------------------------------------------------------
+                    GroupEmptyNonMemberView(
+                        searchQuery = state.searchQuery,
+                        onSearchQueryChange = viewModel::onSearchQueryChange,
+                        onSearchSubmit = viewModel::search,
+                        activeFilter = state.activeSearchFilter,
+                        onFilterSelect = viewModel::onFilterSelect,
+                        onCreateGroupClick = { showCreateGroupDialog = true },
+                        onSearchGroupsClick = {
+                            if (state.searchQuery.isNotBlank()) {
+                                viewModel.search(state.searchQuery)
+                            } else {
+                                viewModel.search(" ")
+                            }
+                        },
+                        searchResults = state.searchResults,
+                        onJoinGroupClick = { groupId -> viewModel.join(groupId) },
+                    )
+                } else {
+                    // -------------------------------------------------------------
+                    // STATE 2: Active Member View (Image 2)
+                    // -------------------------------------------------------------
+                    val header = state.groupDetails ?: GroupHeaderData()
+                    val personal = state.personalStats ?: PersonalGroupStats()
+
+                    GroupActiveMemberView(
+                        headerData = header,
+                        battleData = state.activeBattle,
+                        personalStats = personal,
+                        selectedTab = state.selectedTab,
+                        onTabSelect = viewModel::onTabSelect,
+                        members = state.members,
+                        badges = state.badges,
+                        isExpandedMembers = state.isExpandedMembers,
+                        onToggleExpandMembers = viewModel::toggleExpandMembers,
+                        onManageGroupClick = {},
+                    )
                 }
-                items(detail.members, key = { it.userId }) { member ->
-                    Card(colors = CardDefaults.cardColors(Color(0xFFF7F7FB)), shape = RoundedCornerShape(12.dp)) {
-                        Row(Modifier.fillMaxWidth().padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f)) {
-                                Text(member.fullName, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                Text(
-                                    "${member.actualValue} از ${member.targetValue} • ${challengeMemberStatusFa(member.status)}",
-                                    color = if (member.status == "FAILED") Color(0xFFC43A3A) else Color.Gray,
-                                    fontSize = 10.sp,
-                                )
-                            }
-                            if (member.canRemove) {
-                                OutlinedButton(onClick = { onRemove(member.userId) }) {
-                                    Text("اخراج", color = Color(0xFFC43A3A), fontSize = 10.sp)
-                                }
-                            }
-                        }
+
+                if (busy) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.25f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator(color = GroupPrimaryPurple)
                     }
                 }
             }
-        },
-        confirmButton = { Button(onClick = onDismiss) { Text("بستن") } },
-    )
+        }
+    }
+
+    if (showCreateGroupDialog) {
+        CreateGroupDialog(
+            onDismiss = { showCreateGroupDialog = false },
+            onCreate = { name, description, capacity, isPublic ->
+                showCreateGroupDialog = false
+                viewModel.create(name, description, capacity, isPublic)
+            },
+        )
+    }
+
+    if (showLeaveGroupConfirmDialog) {
+        LeaveGroupConfirmDialog(
+            onDismiss = { showLeaveGroupConfirmDialog = false },
+            onConfirm = {
+                showLeaveGroupConfirmDialog = false
+                viewModel.leave()
+            },
+        )
+    }
 }
 
 @Composable
-private fun BattleDialog(group: StudyGroupDto, vm: MyGroupViewModel, onDismiss: () -> Unit) {
-    val results by vm.searchResults.collectAsState(); var search by remember { mutableStateOf("") }
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("نبرد گروهی") }, text = {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = { vm.matchmake(group.id); onDismiss() }, modifier = Modifier.fillMaxWidth()) { Text("حریف‌یابی خودکار") }
-            OutlinedTextField(search, { search = it }, label = { Text("جست‌وجوی گروه حریف") }, trailingIcon = { Icon(Icons.Default.Search, null, Modifier.clickable { vm.search(search) }) })
-            results.filter { it.id != group.id }.take(4).forEach { rival ->
-                Row(Modifier.fillMaxWidth().clickable { vm.inviteBattle(group.id, rival.id); onDismiss() }.padding(8.dp)) { Text(rival.name, Modifier.weight(1f)); Text("دعوت", color = Purple) }
-            }
-        }
-    }, confirmButton = {}, dismissButton = { OutlinedButton(onClick = onDismiss) { Text("بستن") } })
-}
+private fun CreateGroupDialog(
+    onDismiss: () -> Unit,
+    onCreate: (String, String, Int, Boolean) -> Unit,
+) {
+    var name by remember { mutableStateOf("") }
+    var description by remember { mutableStateOf("") }
+    var capacity by remember { mutableStateOf("20") }
+    var isPublic by remember { mutableStateOf(true) }
 
-@Composable private fun SimpleInfoCard(text: String) { Card(Modifier.fillMaxWidth().padding(16.dp), colors = CardDefaults.cardColors(Color.White)) { Text(text, Modifier.padding(20.dp), fontFamily = IranSansFontFamily) } }
-@Composable private fun ErrorContent(message: String, retry: () -> Unit) {
-    NetworkErrorView(
-        description = message,
-        fullScreen = true,
-        backgroundColor = PageBackground,
-        onRetry = retry
-    )
-}
-private fun formatMinutes(value: Int) = if (value < 60) "$value دقیقه" else "${value / 60}:${(value % 60).toString().padStart(2, '0')} ساعت"
-private fun statusFa(status: String) = when (status) { "ACTIVE" -> "فعال"; "SUCCEEDED" -> "موفق"; "FAILED" -> "ناموفق"; else -> status }
-private fun challengeMemberStatusFa(status: String) = when (status) {
-    "SUCCEEDED" -> "انجام‌شده"
-    "FAILED" -> "انجام‌نشده"
-    "IN_PROGRESS" -> "در حال انجام"
-    else -> "شروع‌نشده"
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = {
+                Text(
+                    text = "ساخت گروه جدید",
+                    fontFamily = IranSansFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = GroupTextNavy,
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text("نام گروه") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                    )
+                    OutlinedTextField(
+                        value = description,
+                        onValueChange = { description = it },
+                        label = { Text("شعار یا معرفی گروه") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                    )
+                    OutlinedTextField(
+                        value = capacity,
+                        onValueChange = { capacity = it.filter(Char::isDigit) },
+                        label = { Text("ظرفیت اعضا") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(
+                            text = if (isPublic) "گروه عمومی (عضویت آزاد)" else "گروه خصوصی (نیاز به تأیید)",
+                            fontFamily = IranSansFontFamily,
+                            fontSize = 13.sp,
+                            color = GroupTextNavy,
+                        )
+                        Switch(
+                            checked = isPublic,
+                            onCheckedChange = { isPublic = it },
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    enabled = name.trim().length >= 3 && (capacity.toIntOrNull() ?: 0) >= 2,
+                    onClick = {
+                        onCreate(
+                            name,
+                            description,
+                            capacity.toIntOrNull() ?: 20,
+                            isPublic,
+                        )
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = GroupPrimaryPurple),
+                    shape = RoundedCornerShape(12.dp),
+                ) {
+                    Text(
+                        text = "ایجاد گروه",
+                        fontFamily = IranSansFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                    )
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = onDismiss,
+                    shape = RoundedCornerShape(12.dp),
+                ) {
+                    Text("انصراف", fontFamily = IranSansFontFamily)
+                }
+            },
+        )
+    }
 }

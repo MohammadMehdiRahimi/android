@@ -91,8 +91,86 @@
     <string name="error_server_unavailable">سرور موقتاً در دسترس نیست. لطفاً دقایقی دیگر دوباره امتحان کنید.</string>
     <string name="error_session_expired">نشست کاربری شما منقضی شده است. لطفاً دوباره وارد شوید.</string>
     <!-- Home Feature Cards Strings -->
-    <string name="home_study_groups_title">گروه‌های مطالعاتی من</string>
+    <string name="home_study_groups_title">گروه مطالعاتی من</string>
     <string name="home_study_groups_subtitle">مطالعه گروهی و رقابت با دوستان</string>
-    <string name="home_peer_trouble_title">پرسش از همکلاسی‌ها</string>
+    <string name="home_peer_trouble_title">پرسش از همکلاسی</string>
     <string name="home_peer_trouble_subtitle">پاسخ سریع به سؤالات و رفع اشکال درسی</string>
+    <string name="home_exams_title">آزمون‌ها</string>
+    <string name="home_exams_subtitle">لیست آزمون‌ها</string>
+    <string name="home_league_title">لیگ‌های رقابتی</string>
+    <string name="home_league_subtitle">تو یک قدم تا جایزه</string>
+
+    <!-- Study Group Strings (Dual State UI) -->
+    <string name="my_groups_title">گروه‌های من</string>
+    <string name="group_search_placeholder">جستجوی گروه...</string>
+    <string name="group_filter_name">نام گروه</string>
+    <string name="group_filter_id"># آیدی گروه</string>
+    <string name="group_filter_medals">مدال‌ها</string>
+    <string name="group_empty_title">هنوز عضو هیچ گروهی نیستی!</string>
+    <string name="group_empty_subtitle">یک گروه بساز یا به گروهی بپیوند\nو با دوستانت رقابت کن.</string>
+    <string name="group_create_new">ساخت گروه جدید</string>
+    <string name="group_search_action">جستجوی گروه‌ها</string>
+    <string name="group_status_member">عضو</string>
+    <string name="group_stat_rank">رتبه گروه</string>
+    <string name="group_stat_points">امتیاز گروه</string>
+    <string name="group_stat_members">اعضا</string>
+    <string name="group_battle_title">نبرد فعال</string>
+    <string name="group_battle_time_remaining">%1$s روز باقی‌مانده</string>
+    <string name="group_battle_week">هفته %1$s از %2$s</string>
+    <string name="group_my_rank">رتبه من</string>
+    <string name="group_my_points">امتیاز من</string>
+    <string name="group_my_study_hours">ساعت مطالعه</string>
+    <string name="group_my_tasks">تعداد تسک</string>
+    <string name="group_tab_members">اعضا</string>
+    <string name="group_tab_medals">مدال‌ها</string>
+    <string name="group_column_rank">رتبه</string>
+    <string name="group_column_member">عضو</string>
+    <string name="group_column_points">امتیاز</string>
+    <string name="group_column_study_time">ساعت مطالعه</string>
+    <string name="group_column_tasks">تعداد تسک</string>
+    <string name="group_you_badge">شما</string>
+    <string name="group_view_all">مشاهده همه</string>
+    <string name="group_hour_unit">ساعت</string>
+    <string name="group_task_unit">تسک</string>
+    <string name="group_leave_title">خروج از گروه</string>
+    <string name="group_leave_confirm_message">آیا از خروج از این گروه مطالعه اطمینان دارید؟ با خروج شما، دسترسی به چالش‌ها و جدول رتبه‌بندی این گروه قطع خواهد شد.</string>
+    <string name="group_leave_action">خروج</string>
+    <string name="group_leave_cancel">انصراف</string>
+    <string name="group_leave_success">شما با موفقیت از گروه خارج شدید</string>
+
+    <!-- Create Study Plan Pixel-Perfect Redesign Strings -->
+    <string name="create_plan_weekly_title">برنامه هفتگی</string>
+    <string name="create_plan_screen_title_format">برنامه‌ریزی برای %1$s</string>
+    <string name="create_plan_screen_subtitle">برنامه درسی و مطالعه</string>
+    <string name="create_plan_total_study_time">کل زمان مطالعه</string>
+    <string name="create_plan_sessions_count">تعداد جلسات</string>
+    <string name="create_plan_day_progress">پیشرفت روز</string>
+    <string name="create_plan_session_unit">جلسه</string>
+    <string name="create_plan_hour_unit">ساعت</string>
+    <string name="create_plan_minute_badge_unit">%1$s دقیقه</string>
+    <string name="create_plan_status_completed">انجام شده</string>
+    <string name="create_plan_status_next">بعدی</string>
+    <string name="create_plan_add_session_action">+ افزودن جلسه</string>
+    <string name="create_plan_save_day_action">ذخیره برنامه روز ✓</string>
+    <string name="create_plan_copy_previous_day_action">کپی از روز قبل</string>
+    <string name="create_plan_copy_success">برنامه روز قبل با موفقیت کپی شد</string>
+    <string name="create_plan_save_success">برنامه روز با موفقیت ذخیره شد</string>
+    <string name="create_plan_delete_session">حذف جلسه</string>
+    <string name="create_plan_edit_session">ویرایش جلسه</string>
+
+    <!-- Add Study Session Redesign Strings -->
+    <string name="add_study_session_title">افزودن جلسه</string>
+    <string name="add_study_session_subtitle">جزئیات جلسه درس و مطالعه را وارد کنید</string>
+    <string name="add_study_session_section_book">درس و کتاب ۱</string>
+    <string name="add_study_session_default_grade">پایه دوازدهم</string>
+    <string name="add_study_session_section_chapters">فصل و مباحث ۱</string>
+    <string name="add_study_session_add_chapter_action">+ اضافه کردن فصل</string>
+    <string name="add_study_session_timing_title">زمان‌بندی و دوره‌های مطالعه</string>
+    <string name="add_study_session_cycle_unit">دوره</string>
+    <string name="add_study_session_study_time_label">زمان مطالعه</string>
+    <string name="add_study_session_rest_time_label">زمان استراحت</string>
+    <string name="add_study_session_minute_unit">د</string>
+    <string name="add_study_session_info_note">برنامه شما به طور خودکار در تقویم تحصیلی شما به‌روزرسانی خواهد شد.</string>
+    <string name="add_study_session_submit_action">ثبت جلسه</string>
+    <string name="add_study_session_cancel_action">انصراف</string>
 </resources>

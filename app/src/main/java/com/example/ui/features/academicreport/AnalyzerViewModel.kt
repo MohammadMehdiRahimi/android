@@ -2,12 +2,10 @@ package com.example.ui.features.academicreport
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 
 class AnalyzerViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -21,47 +19,23 @@ class AnalyzerViewModel(application: Application) : AndroidViewModel(application
             when (timeframe) {
                 AnalyzerTimeframe.LAST_WEEK -> currentState.copy(
                     selectedTimeframe = timeframe,
-                    aiScoreImprovement = "۲.۲٪",
                     aiInsightParagraphs = listOf(
-                        "عملکرد شما نسبت به هفته قبل ۲.۲٪ بهتر شده است.",
+                        "عملکرد شما نسبت به هفته قبل ۷.۲٪ بهتر شده است.",
                         "در درس ریاضی و فیزیک پیشرفت خوبی داشته‌اید.",
                         "برای افزایش درصد توصیه‌می‌شود روی مباحث ادبیات تمرکز بیشتری داشته باشید."
                     ),
                     aiInsights = listOf(
                         AiInsightItem(title = "پیشنهاد ما", value = "مرور مباحث ادبیات", type = InsightType.RECOMMENDATION),
-                        AiInsightItem(title = "بیشترین تمرکز", value = "شب ها (۲۰-۲۲)", type = InsightType.PEAK_FOCUS),
-                        AiInsightItem(title = "سبک یادگیری", value = "دیداری", type = InsightType.LEARNING_STYLE),
+                        AiInsightItem(title = "بهترین تمرکز", value = "شب ها (۲۰-۲۴)", type = InsightType.PEAK_FOCUS),
                     ),
-                    metrics = listOf(
-                        MetricCardData(
-                            title = "تعداد آزمون",
-                            value = 6,
-                            subtitle = "۴ آزمون",
-                            trend = MetricTrend.NEUTRAL,
-                            iconType = MetricIconType.EXAM_COUNT,
-                        ),
-                        MetricCardData(
-                            title = "تست غلط",
-                            value = 158,
-                            subtitle = "▼ ۸٪",
-                            trend = MetricTrend.NEGATIVE,
-                            iconType = MetricIconType.WRONG_TESTS,
-                        ),
-                        MetricCardData(
-                            title = "تست صحیح",
-                            value = 328,
-                            subtitle = "۶۷٪ موفقیت",
-                            trend = MetricTrend.NEUTRAL,
-                            iconType = MetricIconType.CORRECT_TESTS,
-                        ),
-                        MetricCardData(
-                            title = "تعداد تست",
-                            value = 486,
-                            subtitle = "▲ ۱۵٪",
-                            trend = MetricTrend.POSITIVE,
-                            iconType = MetricIconType.TOTAL_TESTS,
-                        ),
-                    ),
+                    correctTestsCount = 328,
+                    correctTestsSubtitle = "۶۷.۳ درصد موفقیت",
+                    totalTestsCount = 486,
+                    totalTestsSubtitle = "▲ ۱۵٪ نسبت به هفته قبل",
+                    totalExamsCount = 6,
+                    totalExamsSubtitle = "۴ آزمون",
+                    wrongTestsCount = 158,
+                    wrongTestsSubtitle = "▼ ۸٪ نسبت به هفته قبل",
                     weaknesses = listOf(
                         SubjectPerformance(name = "فیزیک", percentage = 31),
                         SubjectPerformance(name = "ادبیات", percentage = 42),
@@ -76,14 +50,14 @@ class AnalyzerViewModel(application: Application) : AndroidViewModel(application
                         StudyDistributionPoint(timeSlot = "۰-۴", hours = 0.8f),
                         StudyDistributionPoint(timeSlot = "۴-۸", hours = 1.4f),
                         StudyDistributionPoint(timeSlot = "۸-۱۲", hours = 2.3f),
-                        StudyDistributionPoint(timeSlot = "۱۲-۱۶", hours = 3.0f, isPeak = true),
-                        StudyDistributionPoint(timeSlot = "۱۶-۲۰", hours = 1.6f),
+                        StudyDistributionPoint(timeSlot = "۱۲-۱۶", hours = 3.6f, isPeak = true),
+                        StudyDistributionPoint(timeSlot = "۱۶-۲۰", hours = 2.0f),
                         StudyDistributionPoint(timeSlot = "۲۰-۲۴", hours = 0.6f),
-                    )
+                    ),
+                    peakStudyHoursBadge = "۳ ساعت"
                 )
                 AnalyzerTimeframe.LAST_MONTH -> currentState.copy(
                     selectedTimeframe = timeframe,
-                    aiScoreImprovement = "۵.۸٪",
                     aiInsightParagraphs = listOf(
                         "در ماه گذشته پایداری مطالعه شما به طور چشمگیری افزایش یافته است.",
                         "تعداد تست‌های درس زیست‌شناسی و شیمی به بیشترین حد در این دوره رسیده است.",
@@ -91,39 +65,16 @@ class AnalyzerViewModel(application: Application) : AndroidViewModel(application
                     ),
                     aiInsights = listOf(
                         AiInsightItem(title = "پیشنهاد ما", value = "تست ترکیبی شیمی و زیست", type = InsightType.RECOMMENDATION),
-                        AiInsightItem(title = "بیشترین تمرکز", value = "عصرها (۱۶-۱۹)", type = InsightType.PEAK_FOCUS),
-                        AiInsightItem(title = "سبک یادگیری", value = "تحلیلی - دیداری", type = InsightType.LEARNING_STYLE),
+                        AiInsightItem(title = "بهترین تمرکز", value = "عصرها (۱۶-۱۹)", type = InsightType.PEAK_FOCUS),
                     ),
-                    metrics = listOf(
-                        MetricCardData(
-                            title = "تعداد آزمون",
-                            value = 24,
-                            subtitle = "۱۸ آزمون جامع",
-                            trend = MetricTrend.POSITIVE,
-                            iconType = MetricIconType.EXAM_COUNT,
-                        ),
-                        MetricCardData(
-                            title = "تست غلط",
-                            value = 540,
-                            subtitle = "۱۲٪ کاهش غلط‌ها",
-                            trend = MetricTrend.POSITIVE,
-                            iconType = MetricIconType.WRONG_TESTS,
-                        ),
-                        MetricCardData(
-                            title = "تست صحیح",
-                            value = 1420,
-                            subtitle = "۷۲٪ درصد موفقیت",
-                            trend = MetricTrend.POSITIVE,
-                            iconType = MetricIconType.CORRECT_TESTS,
-                        ),
-                        MetricCardData(
-                            title = "تعداد تست",
-                            value = 1960,
-                            subtitle = "۲۲٪ رشد ماهانه",
-                            trend = MetricTrend.POSITIVE,
-                            iconType = MetricIconType.TOTAL_TESTS,
-                        ),
-                    ),
+                    correctTestsCount = 1420,
+                    correctTestsSubtitle = "۷۲.۱ درصد موفقیت",
+                    totalTestsCount = 1960,
+                    totalTestsSubtitle = "▲ ۲۲٪ رشد ماهانه",
+                    totalExamsCount = 24,
+                    totalExamsSubtitle = "۱۸ آزمون جامع",
+                    wrongTestsCount = 540,
+                    wrongTestsSubtitle = "▼ ۱۲٪ کاهش خطا",
                     weaknesses = listOf(
                         SubjectPerformance(name = "فیزیک", percentage = 38),
                         SubjectPerformance(name = "ادبیات", percentage = 49),
@@ -135,57 +86,34 @@ class AnalyzerViewModel(application: Application) : AndroidViewModel(application
                         SubjectPerformance(name = "ریاضی", percentage = 76),
                     ),
                     studyDistribution = listOf(
-                        StudyDistributionPoint(timeSlot = "۰-۴", hours = 0.3f),
+                        StudyDistributionPoint(timeSlot = "۰-۴", hours = 0.5f),
                         StudyDistributionPoint(timeSlot = "۴-۸", hours = 1.8f),
                         StudyDistributionPoint(timeSlot = "۸-۱۲", hours = 3.2f),
-                        StudyDistributionPoint(timeSlot = "۱۲-۱۶", hours = 3.6f, isPeak = true),
+                        StudyDistributionPoint(timeSlot = "۱۲-۱۶", hours = 3.8f, isPeak = true),
                         StudyDistributionPoint(timeSlot = "۱۶-۲۰", hours = 2.4f),
                         StudyDistributionPoint(timeSlot = "۲۰-۲۴", hours = 1.1f),
-                    )
+                    ),
+                    peakStudyHoursBadge = "۳.۸ ساعت"
                 )
                 AnalyzerTimeframe.LAST_3_MONTHS -> currentState.copy(
                     selectedTimeframe = timeframe,
-                    aiScoreImprovement = "۱۲.۴٪",
                     aiInsightParagraphs = listOf(
                         "روند کلی ۳ ماهه شما نشان‌دهنده جهش تراز در آزمون‌های آزمایشی است.",
                         "تداوم و تسلط بالا در دروس تخصصی تجربی / ریاضی تثبیت شده است.",
                         "توصیه اکید: مرور روتین‌های روزانه واژگان و درک مطلب عربی."
                     ),
                     aiInsights = listOf(
-                        AiInsightItem(title = "پیشنهاد ما", value = "مرور خلاصه نویسی‌ها", type = InsightType.RECOMMENDATION),
-                        AiInsightItem(title = "بیشترین تمرکز", value = "ظهرها (۱۲-۱۶)", type = InsightType.PEAK_FOCUS),
-                        AiInsightItem(title = "سبک یادگیری", value = "آزمون‌محور", type = InsightType.LEARNING_STYLE),
+                        AiInsightItem(title = "پیشنهاد ما", value = "مرور خلاصه‌نویسی‌ها", type = InsightType.RECOMMENDATION),
+                        AiInsightItem(title = "بهترین تمرکز", value = "ظهرها (۱۲-۱۶)", type = InsightType.PEAK_FOCUS),
                     ),
-                    metrics = listOf(
-                        MetricCardData(
-                            title = "تعداد آزمون",
-                            value = 68,
-                            subtitle = "۵۴ آزمون هدفمند",
-                            trend = MetricTrend.POSITIVE,
-                            iconType = MetricIconType.EXAM_COUNT,
-                        ),
-                        MetricCardData(
-                            title = "تست غلط",
-                            value = 1480,
-                            subtitle = "۱۹٪ کاهش نرخ خطا",
-                            trend = MetricTrend.POSITIVE,
-                            iconType = MetricIconType.WRONG_TESTS,
-                        ),
-                        MetricCardData(
-                            title = "تست صحیح",
-                            value = 4620,
-                            subtitle = "۷۵٪ درصد موفقیت",
-                            trend = MetricTrend.POSITIVE,
-                            iconType = MetricIconType.CORRECT_TESTS,
-                        ),
-                        MetricCardData(
-                            title = "تعداد تست",
-                            value = 6100,
-                            subtitle = "۳۵٪ رشد تجمعی",
-                            trend = MetricTrend.POSITIVE,
-                            iconType = MetricIconType.TOTAL_TESTS,
-                        ),
-                    ),
+                    correctTestsCount = 4620,
+                    correctTestsSubtitle = "۷۵.۸ درصد موفقیت",
+                    totalTestsCount = 6100,
+                    totalTestsSubtitle = "▲ ۳۵٪ رشد تجمعی",
+                    totalExamsCount = 68,
+                    totalExamsSubtitle = "۵۴ آزمون هدفمند",
+                    wrongTestsCount = 1480,
+                    wrongTestsSubtitle = "▼ ۱۹٪ کاهش خطا",
                     weaknesses = listOf(
                         SubjectPerformance(name = "ادبیات", percentage = 46),
                         SubjectPerformance(name = "عربی", percentage = 54),
@@ -200,12 +128,17 @@ class AnalyzerViewModel(application: Application) : AndroidViewModel(application
                         StudyDistributionPoint(timeSlot = "۰-۴", hours = 0.4f),
                         StudyDistributionPoint(timeSlot = "۴-۸", hours = 2.0f),
                         StudyDistributionPoint(timeSlot = "۸-۱۲", hours = 3.5f),
-                        StudyDistributionPoint(timeSlot = "۱۲-۱۶", hours = 3.8f, isPeak = true),
+                        StudyDistributionPoint(timeSlot = "۱۲-۱۶", hours = 4.0f, isPeak = true),
                         StudyDistributionPoint(timeSlot = "۱۶-۲۰", hours = 2.8f),
                         StudyDistributionPoint(timeSlot = "۲۰-۲۴", hours = 1.4f),
-                    )
+                    ),
+                    peakStudyHoursBadge = "۴ ساعت"
                 )
             }
         }
+    }
+
+    fun selectStrengthsTab(tab: AnalysisTabType) {
+        _uiState.update { it.copy(activeStrengthsTab = tab) }
     }
 }

@@ -865,19 +865,19 @@ private fun HomeFeatureGrid(navController: NavController) {
                 .height(216.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Right Column (in RTL): Stacked Cards "لایـک‌های رقابتی فعال" and "گروه‌های مطالعاتی من"
+            // Right Column (in RTL): Stacked Cards "آزمون‌ها" and "گروه‌های مطالعاتی من"
             Column(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight(),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // Top Stack Card: لیگ‌های رقابتی فعال
-                FeatureCardLeague(
+                // Top Stack Card: آزمون‌ها (Exams)
+                FeatureCardExamBuilder(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
-                    onClick = { navController.navigate("league") }
+                    onClick = { navController.navigate("exams_screen") }
                 )
 
                 // Bottom Stack Card: گروه‌های مطالعاتی من
@@ -913,12 +913,12 @@ private fun HomeFeatureGrid(navController: NavController) {
                 onClick = { navController.navigate("peer_trouble") }
             )
 
-            // Left Card: آزمون‌ساز
-            FeatureCardExamBuilder(
+            // Left Card: لیگ‌های رقابتی (Leagues)
+            FeatureCardLeague(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight(),
-                onClick = { navController.navigate("exams_screen") }
+                onClick = { navController.navigate("league") }
             )
         }
     }
@@ -933,8 +933,14 @@ private fun FeatureCardSmartPlan(
         modifier = modifier
             .clip(RoundedCornerShape(24.dp))
             .background(
-                Brush.verticalGradient(
-                    listOf(Color(0xFF9868FA), Color(0xFF7543EA))
+                Brush.linearGradient(
+                    colors = listOf(
+                        Color(0xFF9333EA),
+                        Color(0xFF7C3AED),
+                        Color(0xFF581C87)
+                    ),
+                    start = Offset(0f, 0f),
+                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
                 )
             )
             .clickable(onClick = onClick)
@@ -943,7 +949,7 @@ private fun FeatureCardSmartPlan(
         // Dart and Target 3D illustration (shifted slightly leftwards & close to top text)
         Image(
             painter = painterResource(R.drawable.home_plan_dart),
-            contentDescription = "برنامه‌ریز هوشمند شتاب",
+            contentDescription = "برنامه‌ریزی درسی",
             contentScale = ContentScale.Fit,
             modifier = Modifier
                 .align(Alignment.Center)
@@ -959,20 +965,20 @@ private fun FeatureCardSmartPlan(
             horizontalAlignment = Alignment.Start
         ) {
             Text(
-                text = "برنامه‌ریز هوشمند شتاب",
+                text = "برنامه‌ریزی درسی",
                 color = Color.White,
                 fontFamily = IranSansFontFamily,
                 fontWeight = FontWeight.ExtraBold,
-                fontSize = 14.5.sp,
+                fontSize = 15.sp,
                 maxLines = 1,
             )
             Spacer(Modifier.height(3.dp))
             Text(
-                text = "برنامه‌ریزی هوشمند و پیشرفت سؤال",
-                color = Color.White.copy(alpha = 0.88f),
+                text = "برنامه‌ریزی درسی و پیشرفت سؤال",
+                color = Color.White.copy(alpha = 0.90f),
                 fontFamily = IranSansFontFamily,
                 fontWeight = FontWeight.Medium,
-                fontSize = 10.sp,
+                fontSize = 9.5.sp,
                 maxLines = 1,
             )
         }
@@ -1116,14 +1122,14 @@ private fun FeatureCardStudyGroup(
         Column(
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .fillMaxWidth(0.60f)
+                .fillMaxWidth(0.68f)
         ) {
             Text(
                 text = stringResource(R.string.home_study_groups_title),
                 color = HomeNavy,
                 fontFamily = IranSansFontFamily,
                 fontWeight = FontWeight.ExtraBold,
-                fontSize = 12.5.sp,
+                fontSize = 12.sp,
                 maxLines = 1,
             )
             Spacer(Modifier.height(2.dp))
@@ -1194,14 +1200,14 @@ private fun FeatureCardPeerTrouble(
         Column(
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .fillMaxWidth(0.58f)
+                .fillMaxWidth(0.66f)
         ) {
             Text(
                 text = stringResource(R.string.home_peer_trouble_title),
                 color = HomeNavy,
                 fontFamily = IranSansFontFamily,
                 fontWeight = FontWeight.ExtraBold,
-                fontSize = 12.5.sp,
+                fontSize = 12.sp,
                 maxLines = 1,
             )
             Spacer(Modifier.height(2.dp))
@@ -1252,7 +1258,7 @@ private fun FeatureCardExamBuilder(
         // Exam notepad illustration
         Image(
             painter = painterResource(R.drawable.home_exam_sheet),
-            contentDescription = "آزمون‌ساز",
+            contentDescription = stringResource(R.string.home_exams_title),
             contentScale = ContentScale.Fit,
             modifier = Modifier
                 .align(Alignment.CenterEnd)
@@ -1266,7 +1272,7 @@ private fun FeatureCardExamBuilder(
                 .fillMaxWidth(0.58f)
         ) {
             Text(
-                text = "آزمون‌ساز",
+                text = stringResource(R.string.home_exams_title),
                 color = HomeNavy,
                 fontFamily = IranSansFontFamily,
                 fontWeight = FontWeight.ExtraBold,
@@ -1275,7 +1281,7 @@ private fun FeatureCardExamBuilder(
             )
             Spacer(Modifier.height(2.dp))
             Text(
-                text = "آزمون بساز و تمرین کن",
+                text = stringResource(R.string.home_exams_subtitle),
                 color = HomeMuted,
                 fontFamily = IranSansFontFamily,
                 fontSize = 8.5.sp,

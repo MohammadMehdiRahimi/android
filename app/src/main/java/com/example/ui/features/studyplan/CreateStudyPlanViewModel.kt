@@ -59,7 +59,52 @@ data class BookPlanBlock(
     val breakDurationMinutes: Int = 15,
 )
 
+enum class SubjectCategory(
+    val displayName: String,
+    val iconRes: Int,
+    val iconTint: Long,
+    val containerBg: Long,
+) {
+    BIOLOGY("زیست شناسی", com.example.R.drawable.ic_subject_leaf, 0xFF16A34A, 0xFFE8F5E9),
+    MATH("ریاضی", com.example.R.drawable.ic_subject_radical, 0xFFD97706, 0xFFFFF3E0),
+    CHEMISTRY("شیمی", com.example.R.drawable.ic_subject_flask, 0xFFE11D48, 0xFFFFEBEE),
+    PHYSICS("فیزیک", com.example.R.drawable.ic_subject_atom, 0xFF2563EB, 0xFFE3F2FD),
+    LITERATURE("ادبیات فارسی", com.example.R.drawable.ic_subject_open_book, 0xFF7C3AED, 0xFFEDE7F6),
+    REVIEW("مرور و تست", com.example.R.drawable.ic_subject_test_review, 0xFF0284C7, 0xFFE1F5FE),
+    GENERAL("عمومی", com.example.R.drawable.ic_subject_open_book, 0xFF6C47FF, 0xFFEDE7F6),
+}
+
+enum class StudySessionType(val title: String) {
+    EXAM("آزمون"),
+    LEARNING("آموزش"),
+    REVIEW("مرور"),
+    OTHER("سایر"),
+}
+
+data class StudySessionUiModel(
+    val id: String = UUID.randomUUID().toString(),
+    val subjectTitle: String,
+    val chapterTopic: String,
+    val startTime: String,
+    val durationMinutes: Int,
+    val isCompleted: Boolean = false,
+    val isNext: Boolean = false,
+    val category: SubjectCategory = SubjectCategory.BIOLOGY,
+    val customGrade: String? = null,
+    val topicIds: List<String> = emptyList(),
+    val sessionType: StudySessionType = StudySessionType.LEARNING,
+)
+
+data class WeekDayItem(
+    val dayOfWeekName: String,
+    val dayOfMonth: Int,
+    val monthName: String,
+    val date: JalaliDate,
+    val isSelected: Boolean,
+)
+
 data class CreateStudyPlanUiState(
+    val studentName: String = "علی محمدی",
     val userMajor: String = "EXPERIMENTAL",
     val userMajorName: String = "رشته تجربی",
     val grades: List<Pair<String, String>> = listOf(
@@ -68,17 +113,42 @@ data class CreateStudyPlanUiState(
         "GRADE_10" to "پایه دهم",
     ),
     val selectedDate: JalaliDate = DateTransformer.getTodayJalali(),
+    val weekDays: List<WeekDayItem> = emptyList(),
+    val sessions: List<StudySessionUiModel> = emptyList(),
     val isLoadingCatalog: Boolean = true,
     val subjectsByGrade: Map<String, List<SubjectVisualItem>> = emptyMap(),
     val bookBlocks: List<BookPlanBlock> = emptyList(),
     val isSummaryModalVisible: Boolean = false,
     val isSubmitting: Boolean = false,
+    val isAddSessionSheetVisible: Boolean = false,
+    val editingSession: StudySessionUiModel? = null,
     val errorMessage: String? = null,
     val successMessage: String? = null,
 ) {
     fun getSubjectsForGrade(gradeKey: String): List<SubjectVisualItem> {
         return subjectsByGrade[gradeKey] ?: emptyList()
     }
+
+    val totalStudyMinutes: Int
+        get() = sessions.sumOf { it.durationMinutes }
+
+    val completedSessionsCount: Int
+        get() = sessions.count { it.isCompleted }
+
+    val totalSessionsCount: Int
+        get() = sessions.size
+
+    val progressPercentage: Int
+        get() = if (sessions.isNotEmpty()) {
+            ((completedSessionsCount.toFloat() / sessions.size) * 100).toInt()
+        } else 0
+
+    val totalHoursText: String
+        get() {
+            val hours = totalStudyMinutes / 60
+            val mins = totalStudyMinutes % 60
+            return "%d:%02d".format(hours, mins)
+        }
 
     val totalSelectedTopicCount: Int
         get() = bookBlocks.sumOf { book ->
@@ -156,12 +226,20 @@ class CreateStudyPlanViewModel(application: Application) : AndroidViewModel(appl
             breakDurationMinutes = 15,
         )
 
+        val today = DateTransformer.getTodayJalali()
+        val initialWeek = generateWeekDaysForDate(today)
+        val initialSessions = buildDefaultSessionsForDate(today)
+        val studentFullName = tokenManager.getUserFullName()?.takeIf { it.isNotBlank() } ?: "علی محمدی"
+
         _state.update {
             it.copy(
+                studentName = studentFullName,
                 userMajor = savedMajor ?: "EXPERIMENTAL",
                 userMajorName = majorName,
                 subjectsByGrade = initialMap,
                 bookBlocks = listOf(initialBook),
+                weekDays = initialWeek,
+                sessions = initialSessions,
                 isLoadingCatalog = true,
             )
         }
@@ -511,8 +589,238 @@ class CreateStudyPlanViewModel(application: Application) : AndroidViewModel(appl
         }
     }
 
+    private fun generateWeekDaysForDate(selected: JalaliDate): List<WeekDayItem> {
+        val selectedGregorian = selected.toGregorian()
+        return (-3..3).map { dayOffset ->
+            val dayGregorian = selectedGregorian.plusDays(dayOffset.toLong())
+            val jalali = JalaliDate.fromGregorian(dayGregorian)
+            val dayName = DateTransformer.getPersianDayOfWeekName(dayGregorian)
+            WeekDayItem(
+                dayOfWeekName = dayName,
+                dayOfMonth = jalali.day,
+                monthName = jalali.monthName,
+                date = jalali,
+                isSelected = jalali == selected,
+            )
+        }
+    }
+
+    private fun buildDefaultSessionsForDate(date: JalaliDate): List<StudySessionUiModel> {
+        return listOf(
+            StudySessionUiModel(
+                id = "session_bio_1",
+                subjectTitle = "زیست شناسی",
+                chapterTopic = "فصل اول: مولکول‌های اطلاعاتی",
+                startTime = "۰۸:۳۰",
+                durationMinutes = 90,
+                isCompleted = true,
+                isNext = false,
+                category = SubjectCategory.BIOLOGY,
+            ),
+            StudySessionUiModel(
+                id = "session_math_2",
+                subjectTitle = "ریاضی",
+                chapterTopic = "مثلثات و معادلات جبری",
+                startTime = "۱۰:۱۵",
+                durationMinutes = 60,
+                isCompleted = false,
+                isNext = true,
+                category = SubjectCategory.MATH,
+            ),
+            StudySessionUiModel(
+                id = "session_chem_3",
+                subjectTitle = "شیمی",
+                chapterTopic = "فصل دوم: ردپای گازها در زندگی",
+                startTime = "۱۱:۴۵",
+                durationMinutes = 75,
+                isCompleted = false,
+                isNext = false,
+                category = SubjectCategory.CHEMISTRY,
+            ),
+            StudySessionUiModel(
+                id = "session_phys_4",
+                subjectTitle = "فیزیک",
+                chapterTopic = "حرکت‌شناسی و سرعت متوسط",
+                startTime = "۱۵:۰۰",
+                durationMinutes = 60,
+                isCompleted = false,
+                isNext = false,
+                category = SubjectCategory.PHYSICS,
+            ),
+            StudySessionUiModel(
+                id = "session_lit_5",
+                subjectTitle = "ادبیات فارسی",
+                chapterTopic = "آرایه‌های ادبی و قرابت معنایی",
+                startTime = "۱۶:۳۰",
+                durationMinutes = 45,
+                isCompleted = false,
+                isNext = false,
+                category = SubjectCategory.LITERATURE,
+            ),
+            StudySessionUiModel(
+                id = "session_rev_6",
+                subjectTitle = "مرور و تست",
+                chapterTopic = "تست‌های جامع زیست و شیمی",
+                startTime = "۱۸:۰۰",
+                durationMinutes = 60,
+                isCompleted = false,
+                isNext = false,
+                category = SubjectCategory.REVIEW,
+            ),
+        )
+    }
+
     fun selectDate(date: JalaliDate) {
-        _state.update { it.copy(selectedDate = date) }
+        val currentWeek = _state.value.weekDays
+        val existsInWeek = currentWeek.any { it.date == date }
+        val updatedWeek = if (existsInWeek) {
+            currentWeek.map { it.copy(isSelected = it.date == date) }
+        } else {
+            generateWeekDaysForDate(date)
+        }
+        _state.update {
+            it.copy(
+                selectedDate = date,
+                weekDays = updatedWeek,
+            )
+        }
+    }
+
+    fun toggleSessionCompletion(sessionId: String) {
+        _state.update { current ->
+            val updated = current.sessions.map { session ->
+                if (session.id == sessionId) {
+                    session.copy(isCompleted = !session.isCompleted)
+                } else {
+                    session
+                }
+            }
+            // If the first non-completed session changes, update isNext
+            val firstUncompletedIndex = updated.indexOfFirst { !it.isCompleted }
+            val withNextUpdated = updated.mapIndexed { index, session ->
+                session.copy(isNext = index == firstUncompletedIndex && !session.isCompleted)
+            }
+            current.copy(sessions = withNextUpdated)
+        }
+    }
+
+    fun addStudySession(
+        subjectTitle: String,
+        chapterTopic: String,
+        startTime: String,
+        durationMinutes: Int,
+        category: SubjectCategory,
+        sessionType: StudySessionType = StudySessionType.LEARNING,
+    ) {
+        val newSession = StudySessionUiModel(
+            id = UUID.randomUUID().toString(),
+            subjectTitle = subjectTitle,
+            chapterTopic = chapterTopic,
+            startTime = startTime,
+            durationMinutes = durationMinutes,
+            isCompleted = false,
+            isNext = _state.value.sessions.none { !it.isCompleted },
+            category = category,
+            sessionType = sessionType,
+        )
+        _state.update { current ->
+            current.copy(
+                sessions = current.sessions + newSession,
+                isAddSessionSheetVisible = false,
+            )
+        }
+    }
+
+    fun removeStudySession(sessionId: String) {
+        _state.update { current ->
+            val filtered = current.sessions.filterNot { it.id == sessionId }
+            val firstUncompletedIndex = filtered.indexOfFirst { !it.isCompleted }
+            val withNext = filtered.mapIndexed { index, session ->
+                session.copy(isNext = index == firstUncompletedIndex && !session.isCompleted)
+            }
+            current.copy(
+                sessions = withNext,
+                editingSession = if (current.editingSession?.id == sessionId) null else current.editingSession,
+            )
+        }
+    }
+
+    fun openEditSession(session: StudySessionUiModel) {
+        _state.update {
+            it.copy(
+                editingSession = session,
+                isAddSessionSheetVisible = true,
+            )
+        }
+    }
+
+    fun updateStudySession(
+        sessionId: String,
+        subjectTitle: String,
+        chapterTopic: String,
+        startTime: String,
+        durationMinutes: Int,
+        category: SubjectCategory,
+        sessionType: StudySessionType = StudySessionType.LEARNING,
+    ) {
+        _state.update { current ->
+            val updated = current.sessions.map { session ->
+                if (session.id == sessionId) {
+                    session.copy(
+                        subjectTitle = subjectTitle,
+                        chapterTopic = chapterTopic,
+                        startTime = startTime,
+                        durationMinutes = durationMinutes,
+                        category = category,
+                        sessionType = sessionType,
+                    )
+                } else {
+                    session
+                }
+            }
+            current.copy(
+                sessions = updated,
+                editingSession = null,
+                isAddSessionSheetVisible = false,
+            )
+        }
+    }
+
+    fun copyPreviousDayPlan() {
+        val prevDate = JalaliDate.fromGregorian(_state.value.selectedDate.toGregorian().minusDays(1))
+        val copiedSessions = buildDefaultSessionsForDate(prevDate).map {
+            it.copy(id = UUID.randomUUID().toString(), isCompleted = false)
+        }
+        _state.update {
+            it.copy(
+                sessions = copiedSessions,
+                successMessage = "برنامه روز قبل با موفقیت کپی شد",
+            )
+        }
+    }
+
+    fun saveDayPlan(onSuccess: () -> Unit = {}) {
+        viewModelScope.launch {
+            _state.update { it.copy(isSubmitting = true) }
+            // Submit to catalog / tasks endpoint if applicable
+            StudyPlanDataCache.invalidate()
+            _state.update {
+                it.copy(
+                    isSubmitting = false,
+                    successMessage = "برنامه روز با موفقیت ذخیره شد",
+                )
+            }
+            _events.emit(CreateStudyPlanEvent.PlanSaved)
+            onSuccess()
+        }
+    }
+
+    fun showAddSessionSheet() {
+        _state.update { it.copy(isAddSessionSheetVisible = true) }
+    }
+
+    fun hideAddSessionSheet() {
+        _state.update { it.copy(isAddSessionSheetVisible = false) }
     }
 
     // --- Multi-Book Actions ---
@@ -736,6 +1044,106 @@ class CreateStudyPlanViewModel(application: Application) : AndroidViewModel(appl
                 }
             }
             current.copy(bookBlocks = updated)
+        }
+    }
+
+    // Direct single-session helpers for the redesigned Add Study Session UI
+    fun selectGrade(gradeKey: String, gradeName: String) {
+        val firstBookId = _state.value.bookBlocks.firstOrNull()?.bookBlockId ?: return
+        selectGradeForBook(firstBookId, gradeKey, gradeName)
+    }
+
+    fun selectSubject(subjectId: String) {
+        val firstBookId = _state.value.bookBlocks.firstOrNull()?.bookBlockId ?: return
+        selectSubjectForBook(firstBookId, subjectId)
+    }
+
+    fun selectChapter(chapterBlockId: String, chapterId: String) {
+        val firstBookId = _state.value.bookBlocks.firstOrNull()?.bookBlockId ?: return
+        selectChapterForBookBlock(firstBookId, chapterBlockId, chapterId)
+    }
+
+    fun toggleTopic(chapterBlockId: String, topicId: String) {
+        val firstBookId = _state.value.bookBlocks.firstOrNull()?.bookBlockId ?: return
+        toggleTopicForBookBlock(firstBookId, chapterBlockId, topicId)
+    }
+
+    fun addChapterSection() {
+        val firstBookId = _state.value.bookBlocks.firstOrNull()?.bookBlockId ?: return
+        addChapterBlockToBook(firstBookId)
+    }
+
+    fun removeChapterSection(chapterBlockId: String) {
+        val firstBookId = _state.value.bookBlocks.firstOrNull()?.bookBlockId ?: return
+        removeChapterBlockFromBook(firstBookId, chapterBlockId)
+    }
+
+    fun incrementCycleCount() {
+        val firstBookId = _state.value.bookBlocks.firstOrNull()?.bookBlockId ?: return
+        incrementPeriodForBook(firstBookId)
+    }
+
+    fun decrementCycleCount() {
+        val firstBookId = _state.value.bookBlocks.firstOrNull()?.bookBlockId ?: return
+        decrementPeriodForBook(firstBookId)
+    }
+
+    fun updateStudyDuration(minutes: Int) {
+        val firstBookId = _state.value.bookBlocks.firstOrNull()?.bookBlockId ?: return
+        setStudyDurationForBook(firstBookId, minutes)
+    }
+
+    fun updateRestDuration(minutes: Int) {
+        val firstBookId = _state.value.bookBlocks.firstOrNull()?.bookBlockId ?: return
+        setBreakDurationForBook(firstBookId, minutes)
+    }
+
+    fun submitDirectSession(onSuccess: () -> Unit = {}) {
+        val currentState = _state.value
+        val firstBook = currentState.bookBlocks.firstOrNull()
+        if (firstBook == null) {
+            onSuccess()
+            return
+        }
+        val selectedSubject = currentState.getSubjectsForGrade(firstBook.selectedGrade)
+            .firstOrNull { it.id == firstBook.selectedSubjectId }
+
+        val subjectTitle = selectedSubject?.name ?: selectedSubject?.minimalName ?: "مطالعه"
+        val selectedChapterNames = firstBook.chapterBlocks.mapNotNull { ch ->
+            val chap = selectedSubject?.chapters?.firstOrNull { it.id == ch.selectedChapterId }
+            chap?.name
+        }
+        val chapterTopic = if (selectedChapterNames.isNotEmpty()) {
+            selectedChapterNames.joinToString("، ")
+        } else {
+            "جلسه درس و مطالعه"
+        }
+
+        val category = when {
+            subjectTitle.contains("زیست") -> SubjectCategory.BIOLOGY
+            subjectTitle.contains("ریاضی") || subjectTitle.contains("حسابان") || subjectTitle.contains("هندسه") -> SubjectCategory.MATH
+            subjectTitle.contains("شیمی") -> SubjectCategory.CHEMISTRY
+            subjectTitle.contains("فیزیک") -> SubjectCategory.PHYSICS
+            subjectTitle.contains("ادبیات") || subjectTitle.contains("فنون") -> SubjectCategory.LITERATURE
+            else -> SubjectCategory.GENERAL
+        }
+
+        // Add to local planned sessions
+        addStudySession(
+            subjectTitle = subjectTitle,
+            chapterTopic = chapterTopic,
+            startTime = "۰۸:۳۰",
+            durationMinutes = firstBook.studyDurationMinutes,
+            category = category,
+        )
+
+        // Also if topics are selected, create manual study tasks
+        val hasTopics = firstBook.chapterBlocks.any { it.selectedTopicIds.isNotEmpty() }
+        if (hasTopics) {
+            confirmAndSubmitPlan(onSuccess = onSuccess)
+        } else {
+            StudyPlanDataCache.invalidate()
+            onSuccess()
         }
     }
 

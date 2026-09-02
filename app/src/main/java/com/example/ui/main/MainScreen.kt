@@ -703,20 +703,14 @@ fun FeatureGridHub(navController: NavController) {
                         // Header Text
                         Column {
                             Text(
-                                text = "برنامه‌ریز هوشمند",
+                                text = "برنامه‌ریزی درسی",
                                 fontSize = 12.5.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF4C1D95)
                             )
-                            Text(
-                                text = "شتاب",
-                                fontSize = 12.5.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF6D28D9)
-                            )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "برنامه‌ریزی هوشمند و پیشرفت سوال",
+                                text = "برنامه‌ریزی درسی و پیشرفت سؤال",
                                 fontSize = 9.sp,
                                 color = Color(0xFF7C3AED),
                                 lineHeight = 12.sp,

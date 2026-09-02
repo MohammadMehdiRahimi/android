@@ -1,6 +1,5 @@
 package com.example.ui.features.academicreport
 
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -11,9 +10,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.*
-import androidx.compose.material.icons.automirrored.outlined.*
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -21,14 +19,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -43,44 +38,39 @@ import com.example.R
 import com.example.ui.core.toPersianNumber
 import com.example.ui.theme.IranSansFontFamily
 
-// Theme Palette Constants for Analyzer Screen
-val AnalyzerPurple = Color(0xFF8B5CF6)
-val AnalyzerPurpleDark = Color(0xFF6D28D9)
-val AnalyzerPurpleLight = Color(0xFFF3EEFF)
-val AnalyzerPurpleBorder = Color(0xFFDDD6FE)
-val AnalyzerNavy = Color(0xFF1E1B4B)
-val AnalyzerNavyMuted = Color(0xFF475569)
-val AnalyzerGraySub = Color(0xFF64748B)
-val AnalyzerCardBg = Color.White
-val AnalyzerCardBorder = Color(0xFFF1F5F9)
+// Theme Palette Constants matching UI
+val AppPrimaryPurple = Color(0xFF5B42F3)
+val AppLightPurpleBg = Color(0xFFF3F0FF)
+val AppSoftBorder = Color(0xFFEDE9FE)
+val AppTextDark = Color(0xFF0F172A)
+val AppTextMuted = Color(0xFF64748B)
+val AppTextBody = Color(0xFF334155)
 
-val MetricGreen = Color(0xFF10B981)
-val MetricGreenBg = Color(0xFFD1FAE5)
-val MetricRed = Color(0xFFEF4444)
-val MetricRedBg = Color(0xFFFEE2E2)
-val MetricOrange = Color(0xFFF59E0B)
-val MetricOrangeBg = Color(0xFFFEF3C7)
-val MetricBlue = Color(0xFF3B82F6)
-val MetricBlueBg = Color(0xFFDBEAFE)
+val StatGreen = Color(0xFF10B981)
+val StatGreenBg = Color(0xFFDCFCE7)
+val StatRed = Color(0xFFEF4444)
+val StatRedBg = Color(0xFFFEE2E2)
+val StatOrange = Color(0xFFF97316)
+val StatOrangeBg = Color(0xFFFFEDD5)
+val StatBlue = Color(0xFF0284C7)
+val StatBlueBg = Color(0xFFE0F2FE)
 
 /**
- * 1. Top Header Component
+ * 1. Top Header Component (Strict RTL, without bell icon)
  */
 @Composable
 fun AnalyzerTopHeader(
     userName: String,
-    unreadNotifications: Int,
-    onNotificationClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+            .padding(horizontal = 20.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.Start,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // Right in RTL (1st child): User Profile Avatar with Online Badge
+        // User Profile Avatar with Online Green Dot (RTL Start / Right)
         Box(
             modifier = Modifier.size(52.dp),
             contentAlignment = Alignment.Center,
@@ -89,7 +79,7 @@ fun AnalyzerTopHeader(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(CircleShape)
-                    .border(2.dp, Color(0xFFE2E8F0), CircleShape),
+                    .border(1.5.dp, Color(0xFFE2E8F0), CircleShape),
             ) {
                 Image(
                     painter = painterResource(id = R.drawable.enb_sina),
@@ -98,11 +88,11 @@ fun AnalyzerTopHeader(
                     modifier = Modifier.fillMaxSize(),
                 )
             }
-            // Online Green Status Dot (Bottom-End in RTL)
+            // Online Green Status Dot (Bottom-Start in RTL)
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .size(13.dp)
+                    .size(14.dp)
                     .clip(CircleShape)
                     .background(Color.White)
                     .padding(2.dp),
@@ -111,72 +101,41 @@ fun AnalyzerTopHeader(
                     modifier = Modifier
                         .fillMaxSize()
                         .clip(CircleShape)
-                        .background(MetricGreen),
+                        .background(StatGreen),
                 )
             }
         }
 
-        // Center (2nd child): Title & Subtitle
+        Spacer(modifier = Modifier.width(12.dp))
+
+        // Title & Subtitle Column (RTL Start / Right)
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+            horizontalAlignment = Alignment.Start,
         ) {
             Text(
-                text = "تحلیلگر",
-                color = AnalyzerNavy,
+                text = "تحلیل",
+                color = AppTextDark,
                 fontFamily = IranSansFontFamily,
                 fontWeight = FontWeight.ExtraBold,
-                fontSize = 20.sp,
+                fontSize = 22.sp,
+                textAlign = TextAlign.Start,
             )
-            Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = "گزارش کامل پیشرفت شما",
-                color = AnalyzerGraySub,
+                color = AppTextMuted,
                 fontFamily = IranSansFontFamily,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.Normal,
                 fontSize = 12.sp,
+                textAlign = TextAlign.Start,
             )
-        }
-
-        // Left in RTL (3rd child): Notification Bell Icon Box
-        Surface(
-            modifier = Modifier
-                .size(44.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .clickable { onNotificationClick() }
-                .testTag("analyzer_notification_btn"),
-            shape = RoundedCornerShape(14.dp),
-            color = Color.White,
-            border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
-            shadowElevation = 1.dp,
-        ) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Notifications,
-                    contentDescription = "اعلانات",
-                    tint = AnalyzerNavy,
-                    modifier = Modifier.size(22.dp),
-                )
-                if (unreadNotifications > 0) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(top = 9.dp, end = 9.dp)
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(AnalyzerPurple),
-                    )
-                }
-            }
         }
     }
 }
 
 /**
- * 2. Timeframe Filter Bar (هفته گذشته / ماه گذشته / ۳ ماه گذشته)
+ * 2. Timeframe Filter Bar (هفته گذشته / ۳ ماه گذشته / ماه گذشته) - Strict RTL
  */
 @Composable
 fun TimeframeFilterBar(
@@ -184,104 +143,118 @@ fun TimeframeFilterBar(
     onTimeframeSelected: (AnalyzerTimeframe) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var isDropdownOpen by remember { mutableStateOf(false) }
-
     Row(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // Right in RTL (1st child): Secondary Text Buttons for Other Timeframes
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        // Tab 1: هفته گذشته (First in RTL - on the right)
+        val isWeekSelected = selectedTimeframe == AnalyzerTimeframe.LAST_WEEK
+        Surface(
+            modifier = Modifier
+                .weight(1.3f)
+                .height(42.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .clickable { onTimeframeSelected(AnalyzerTimeframe.LAST_WEEK) }
+                .testTag("timeframe_week_tab"),
+            shape = RoundedCornerShape(14.dp),
+            color = if (isWeekSelected) AppPrimaryPurple else Color.White,
+            border = if (isWeekSelected) null else BorderStroke(1.dp, Color(0xFFE2E8F0)),
+            shadowElevation = if (isWeekSelected) 2.dp else 0.dp,
         ) {
-            val allOptions = listOf(AnalyzerTimeframe.LAST_3_MONTHS, AnalyzerTimeframe.LAST_MONTH, AnalyzerTimeframe.LAST_WEEK)
-            val otherTimeframes = allOptions.filter { it != selectedTimeframe }
-            otherTimeframes.forEach { timeframe ->
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                // Calendar icon at start (right in RTL)
+                Icon(
+                    imageVector = Icons.Outlined.CalendarMonth,
+                    contentDescription = null,
+                    tint = if (isWeekSelected) Color.White else AppTextMuted,
+                    modifier = Modifier.size(17.dp),
+                )
                 Text(
-                    text = timeframe.title,
-                    color = AnalyzerGraySub,
+                    text = "هفته گذشته",
+                    color = if (isWeekSelected) Color.White else AppTextMuted,
                     fontFamily = IranSansFontFamily,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = if (isWeekSelected) FontWeight.Bold else FontWeight.Medium,
                     fontSize = 12.5.sp,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable { onTimeframeSelected(timeframe) }
-                        .padding(horizontal = 4.dp, vertical = 4.dp),
+                )
+                // Dropdown arrow at end (left in RTL)
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowDown,
+                    contentDescription = null,
+                    tint = if (isWeekSelected) Color.White else AppTextMuted,
+                    modifier = Modifier.size(18.dp),
                 )
             }
         }
 
-        // Left in RTL (2nd child): Active Filter Pill with Dropdown / Calendar Icon
-        Box {
-            Surface(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(16.dp))
-                    .clickable { isDropdownOpen = !isDropdownOpen }
-                    .testTag("timeframe_dropdown_trigger"),
-                shape = RoundedCornerShape(16.dp),
-                color = AnalyzerPurpleLight,
-                border = BorderStroke(1.dp, AnalyzerPurpleBorder),
+        // Tab 2: ۳ ماه گذشته
+        val is3MonthsSelected = selectedTimeframe == AnalyzerTimeframe.LAST_3_MONTHS
+        Surface(
+            modifier = Modifier
+                .weight(1.1f)
+                .height(42.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .clickable { onTimeframeSelected(AnalyzerTimeframe.LAST_3_MONTHS) }
+                .testTag("timeframe_3months_tab"),
+            shape = RoundedCornerShape(14.dp),
+            color = if (is3MonthsSelected) AppPrimaryPurple else Color.White,
+            border = if (is3MonthsSelected) null else BorderStroke(1.dp, Color(0xFFE2E8F0)),
+            shadowElevation = if (is3MonthsSelected) 2.dp else 0.dp,
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
             ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.CalendarMonth,
-                        contentDescription = null,
-                        tint = AnalyzerPurple,
-                        modifier = Modifier.size(16.dp),
-                    )
-                    Text(
-                        text = selectedTimeframe.title,
-                        color = AnalyzerPurple,
-                        fontFamily = IranSansFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp,
-                    )
-                    Icon(
-                        imageVector = Icons.Default.KeyboardArrowDown,
-                        contentDescription = null,
-                        tint = AnalyzerPurple,
-                        modifier = Modifier.size(16.dp),
-                    )
-                }
+                Text(
+                    text = "۳ ماه گذشته",
+                    color = if (is3MonthsSelected) Color.White else AppTextMuted,
+                    fontFamily = IranSansFontFamily,
+                    fontWeight = if (is3MonthsSelected) FontWeight.Bold else FontWeight.Medium,
+                    fontSize = 12.5.sp,
+                )
             }
+        }
 
-            DropdownMenu(
-                expanded = isDropdownOpen,
-                onDismissRequest = { isDropdownOpen = false },
-                modifier = Modifier.background(Color.White),
+        // Tab 3: ماه گذشته
+        val isMonthSelected = selectedTimeframe == AnalyzerTimeframe.LAST_MONTH
+        Surface(
+            modifier = Modifier
+                .weight(1.1f)
+                .height(42.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .clickable { onTimeframeSelected(AnalyzerTimeframe.LAST_MONTH) }
+                .testTag("timeframe_month_tab"),
+            shape = RoundedCornerShape(14.dp),
+            color = if (isMonthSelected) AppPrimaryPurple else Color.White,
+            border = if (isMonthSelected) null else BorderStroke(1.dp, Color(0xFFE2E8F0)),
+            shadowElevation = if (isMonthSelected) 2.dp else 0.dp,
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
             ) {
-                AnalyzerTimeframe.values().forEach { timeframe ->
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                text = timeframe.title,
-                                fontFamily = IranSansFontFamily,
-                                fontWeight = if (timeframe == selectedTimeframe) FontWeight.Bold else FontWeight.Normal,
-                                color = if (timeframe == selectedTimeframe) AnalyzerPurple else AnalyzerNavy,
-                                fontSize = 13.sp,
-                            )
-                        },
-                        onClick = {
-                            onTimeframeSelected(timeframe)
-                            isDropdownOpen = false
-                        },
-                    )
-                }
+                Text(
+                    text = "ماه گذشته",
+                    color = if (isMonthSelected) Color.White else AppTextMuted,
+                    fontFamily = IranSansFontFamily,
+                    fontWeight = if (isMonthSelected) FontWeight.Bold else FontWeight.Medium,
+                    fontSize = 12.5.sp,
+                )
             }
         }
     }
 }
 
 /**
- * 3. AI Smart Analysis Card ("تحلیل هوشمند Ai")
+ * 3. AI Smart Analysis Card ("تحلیل هوشمند Ai") - Strict RTL, without learning style
  */
 @Composable
 fun AiSmartAnalysisCard(
@@ -293,220 +266,272 @@ fun AiSmartAnalysisCard(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
-            .shadow(2.dp, RoundedCornerShape(26.dp), spotColor = Color(0x1A8B5CF6))
+            .shadow(2.dp, RoundedCornerShape(24.dp), spotColor = Color(0x155B42F3))
             .testTag("ai_smart_analysis_card"),
-        shape = RoundedCornerShape(26.dp),
+        shape = RoundedCornerShape(24.dp),
         color = Color.White,
-        border = BorderStroke(1.dp, Color(0xFFECE7FE)),
+        border = BorderStroke(1.dp, AppSoftBorder),
     ) {
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            Color(0xFFFAF7FF),
-                            Color(0xFFFFFFFF),
-                        )
-                    )
-                )
-                .padding(16.dp),
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Column(
+            // Header: Title "تحلیل هوشمند" + Purple "Ai" Badge (RTL Start / Right)
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
+                horizontalArrangement = Arrangement.Start,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                // Top Header Row: "تحلیل هوشمند" + Purple "Ai" Badge
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Start,
-                    verticalAlignment = Alignment.CenterVertically,
+                Text(
+                    text = "تحلیل هوشمند",
+                    color = AppTextDark,
+                    fontFamily = IranSansFontFamily,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 17.sp,
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = AppPrimaryPurple,
                 ) {
                     Text(
-                        text = "تحلیل هوشمند",
-                        color = AnalyzerNavy,
+                        text = "Ai",
+                        color = Color.White,
                         fontFamily = IranSansFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = Color(0xFF8B5CF6),
+                }
+            }
+
+            // Middle: Text on RTL Start (Right) + Robot Image on RTL End (Left)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                // AI Text Paragraphs on RTL Start / Right
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalAlignment = Alignment.Start,
+                ) {
+                    paragraphs.forEach { paragraph ->
+                        Text(
+                            text = paragraph,
+                            color = AppTextBody,
+                            fontFamily = IranSansFontFamily,
+                            fontWeight = FontWeight.Normal,
+                            fontSize = 12.sp,
+                            lineHeight = 19.sp,
+                            textAlign = TextAlign.Justify,
+                        )
+                    }
+                }
+
+                // Robot Illustration on RTL End / Left
+                Box(
+                    modifier = Modifier.size(105.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.ai_vector),
+                        contentDescription = "تحلیل هوشمند هوش مصنوعی",
+                        modifier = Modifier.size(95.dp),
+                        contentScale = ContentScale.Fit,
+                    )
+
+                    // Sparkle Speech Bubble near top corner
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .offset(x = 4.dp, y = (-2).dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(AppLightPurpleBg)
+                            .border(1.dp, AppSoftBorder, RoundedCornerShape(8.dp))
+                            .padding(horizontal = 6.dp, vertical = 3.dp),
                     ) {
                         Text(
-                            text = "Ai",
-                            color = Color.White,
-                            fontFamily = IranSansFontFamily,
-                            fontWeight = FontWeight.Bold,
+                            text = "✨",
                             fontSize = 11.sp,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                         )
                     }
                 }
+            }
 
-                // Middle Row: Right Text Insights + Left 3D Robot Illustration
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    // Right in RTL (1st child): Bullet-pointed AI Insights Text
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(end = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        paragraphs.forEach { paragraph ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.Top,
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .padding(top = 7.dp, start = 2.dp, end = 6.dp)
-                                        .size(4.dp)
-                                        .clip(CircleShape)
-                                        .background(AnalyzerPurple),
-                                )
-                                Text(
-                                    text = paragraph,
-                                    color = AnalyzerNavyMuted,
-                                    fontFamily = IranSansFontFamily,
-                                    fontWeight = FontWeight.Normal,
-                                    fontSize = 11.5.sp,
-                                    lineHeight = 18.sp,
-                                )
-                            }
-                        }
-                    }
-
-                    // Left in RTL (2nd child): Vector AI Robot Avatar & Sparkle Bubble
-                    Box(
-                        modifier = Modifier.size(100.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        AiRobotVectorIllustration(
-                            modifier = Modifier.size(92.dp),
-                        )
-                    }
-                }
-
-                // Bottom Row: 3 Insight Chips (پیشنهاد ما, بیشترین تمرکز, سبک یادگیری)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    insights.forEach { insight ->
-                        AiInsightChip(
-                            item = insight,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
+            // Bottom: 2 Insight Cards (پیشنهاد ما / بهترین تمرکز)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                insights.forEach { insight ->
+                    AiInsightPillCard(
+                        item = insight,
+                        modifier = Modifier.weight(1f),
+                    )
                 }
             }
         }
     }
 }
 
-/**
- * Single AI Insight Chip Item
- */
 @Composable
-fun AiInsightChip(
+private fun AiInsightPillCard(
     item: AiInsightItem,
     modifier: Modifier = Modifier,
 ) {
     Surface(
         modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
-            .shadow(0.5.dp, RoundedCornerShape(14.dp)),
-        shape = RoundedCornerShape(14.dp),
-        color = Color(0xFFF9F7FE),
+            .clip(RoundedCornerShape(16.dp)),
+        shape = RoundedCornerShape(16.dp),
+        color = Color(0xFFF9F8FE),
         border = BorderStroke(1.dp, Color(0xFFEDE8FC)),
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 8.dp, horizontal = 4.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
+                .padding(vertical = 10.dp, horizontal = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            // Icon & Header Row
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
-            ) {
-                when (item.type) {
-                    InsightType.RECOMMENDATION -> {
-                        Icon(
-                            imageVector = Icons.Outlined.GpsFixed,
-                            contentDescription = null,
-                            tint = Color(0xFFF43F5E),
-                            modifier = Modifier.size(12.dp),
-                        )
-                    }
-                    InsightType.PEAK_FOCUS -> {
-                        Icon(
-                            imageVector = Icons.Outlined.Nightlight,
-                            contentDescription = null,
-                            tint = AnalyzerPurple,
-                            modifier = Modifier.size(12.dp),
-                        )
-                    }
-                    InsightType.LEARNING_STYLE -> {
-                        Icon(
-                            imageVector = Icons.Outlined.Visibility,
-                            contentDescription = null,
-                            tint = Color(0xFF6366F1),
-                            modifier = Modifier.size(12.dp),
-                        )
-                    }
+            // Icon at start (right in RTL)
+            when (item.type) {
+                InsightType.RECOMMENDATION -> {
+                    Icon(
+                        imageVector = Icons.Outlined.GpsFixed,
+                        contentDescription = null,
+                        tint = StatRed,
+                        modifier = Modifier.size(18.dp),
+                    )
                 }
-                Spacer(modifier = Modifier.width(3.dp))
-                Text(
-                    text = item.title,
-                    color = AnalyzerGraySub,
-                    fontFamily = IranSansFontFamily,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 9.5.sp,
-                )
+                InsightType.PEAK_FOCUS -> {
+                    Icon(
+                        imageVector = Icons.Outlined.Nightlight,
+                        contentDescription = null,
+                        tint = AppPrimaryPurple,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
             }
 
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = item.value,
-                color = AnalyzerNavy,
-                fontFamily = IranSansFontFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = 10.5.sp,
-                textAlign = TextAlign.Center,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            // Titles
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 8.dp),
+                horizontalAlignment = Alignment.Start,
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(
+                    text = item.title,
+                    color = AppPrimaryPurple,
+                    fontFamily = IranSansFontFamily,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 10.5.sp,
+                    maxLines = 1,
+                    textAlign = TextAlign.Start,
+                )
+                Text(
+                    text = item.value,
+                    color = AppTextDark,
+                    fontFamily = IranSansFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 11.sp,
+                    textAlign = TextAlign.Start,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }
 
 /**
- * 4. Performance Metrics Grid (۴ کارت آمار کلیدی)
+ * 4. 2x2 Performance Metrics Grid - Strict RTL
  */
 @Composable
 fun PerformanceMetricsGrid(
-    metrics: List<MetricCardData>,
+    correctCount: Int,
+    correctSubtitle: String,
+    totalTestsCount: Int,
+    totalTestsSubtitle: String,
+    totalExamsCount: Int,
+    totalExamsSubtitle: String,
+    wrongCount: Int,
+    wrongSubtitle: String,
     modifier: Modifier = Modifier,
 ) {
-    Row(
+    Column(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        metrics.forEach { metric ->
-            PerformanceMetricCard(
-                metric = metric,
+        // Row 1: Right = تست صحیح, Left = تعداد تست
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            // Right: تست صحیح (First child in RTL Row)
+            SingleMetricCard(
+                title = "تست صحیح",
+                titleColor = AppTextMuted,
+                value = correctCount.toString().toPersianNumber(),
+                subtitle = correctSubtitle,
+                subtitleColor = AppTextMuted,
+                icon = Icons.Outlined.GpsFixed,
+                iconTint = AppPrimaryPurple,
+                iconBg = AppLightPurpleBg,
+                modifier = Modifier.weight(1f),
+            )
+
+            // Left: تعداد تست (Second child in RTL Row)
+            SingleMetricCard(
+                title = "تعداد تست",
+                titleColor = AppTextMuted,
+                value = totalTestsCount.toString().toPersianNumber(),
+                subtitle = totalTestsSubtitle,
+                subtitleColor = StatGreen,
+                icon = Icons.Outlined.Check,
+                iconTint = StatGreen,
+                iconBg = StatGreenBg,
+                modifier = Modifier.weight(1f),
+            )
+        }
+
+        // Row 2: Right = تعداد آزمون, Left = تست غلط
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            // Right: تعداد آزمون (First child in RTL Row)
+            SingleMetricCard(
+                title = "تعداد آزمون",
+                titleColor = AppTextMuted,
+                value = totalExamsCount.toString().toPersianNumber(),
+                subtitle = totalExamsSubtitle,
+                subtitleColor = AppTextMuted,
+                icon = Icons.Outlined.Description,
+                iconTint = StatBlue,
+                iconBg = StatBlueBg,
+                modifier = Modifier.weight(1f),
+            )
+
+            // Left: تست غلط (Second child in RTL Row)
+            SingleMetricCard(
+                title = "تست غلط",
+                titleColor = StatOrange,
+                value = wrongCount.toString().toPersianNumber(),
+                subtitle = wrongSubtitle,
+                subtitleColor = StatRed,
+                icon = Icons.Outlined.Close,
+                iconTint = StatOrange,
+                iconBg = StatOrangeBg,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -514,147 +539,15 @@ fun PerformanceMetricsGrid(
 }
 
 @Composable
-fun PerformanceMetricCard(
-    metric: MetricCardData,
-    modifier: Modifier = Modifier,
-) {
-    val (iconBgColor, iconTintColor, iconVector) = when (metric.iconType) {
-        MetricIconType.EXAM_COUNT -> Triple(MetricBlueBg, MetricBlue, Icons.Outlined.Description)
-        MetricIconType.WRONG_TESTS -> Triple(MetricOrangeBg, MetricOrange, Icons.Outlined.Close)
-        MetricIconType.CORRECT_TESTS -> Triple(AnalyzerPurpleLight, AnalyzerPurple, Icons.Outlined.GpsFixed)
-        MetricIconType.TOTAL_TESTS -> Triple(MetricGreenBg, MetricGreen, Icons.Outlined.Check)
-    }
-
-    Surface(
-        modifier = modifier
-            .clip(RoundedCornerShape(18.dp))
-            .shadow(1.dp, RoundedCornerShape(18.dp), spotColor = Color(0x0A000000)),
-        shape = RoundedCornerShape(18.dp),
-        color = Color(0xFFFBFBFE),
-        border = BorderStroke(1.dp, Color(0xFFF1F4F9)),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 12.dp, horizontal = 6.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            // Header Row: Title & Circular Icon
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(20.dp)
-                        .clip(CircleShape)
-                        .background(iconBgColor),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = iconVector,
-                        contentDescription = null,
-                        tint = iconTintColor,
-                        modifier = Modifier.size(11.dp),
-                    )
-                }
-                Spacer(modifier = Modifier.width(3.dp))
-                Text(
-                    text = metric.title,
-                    color = AnalyzerGraySub,
-                    fontFamily = IranSansFontFamily,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 9.sp,
-                    maxLines = 1,
-                )
-            }
-
-            Spacer(modifier = Modifier.height(2.dp))
-
-            // Big Number
-            Text(
-                text = metric.value.toPersianNumber(),
-                color = AnalyzerNavy,
-                fontFamily = IranSansFontFamily,
-                fontWeight = FontWeight.ExtraBold,
-                fontSize = 20.sp,
-            )
-
-            // Subtitle / Trend
-            Text(
-                text = metric.subtitle,
-                color = when (metric.trend) {
-                    MetricTrend.POSITIVE -> MetricGreen
-                    MetricTrend.NEGATIVE -> MetricRed
-                    MetricTrend.NEUTRAL -> AnalyzerGraySub
-                },
-                fontFamily = IranSansFontFamily,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 8.5.sp,
-                maxLines = 1,
-                textAlign = TextAlign.Center,
-            )
-        }
-    }
-}
-
-/**
- * 5. Strengths & Weaknesses Section (نقاط قوت و نقاط ضعف)
- */
-@Composable
-fun StrengthsAndWeaknessesSection(
-    strengths: List<SubjectPerformance>,
-    weaknesses: List<SubjectPerformance>,
-    onViewStrengthsDetails: () -> Unit,
-    onViewWeaknessesDetails: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        // Right in RTL (1st child): Weaknesses Card ("نقاط ضعف" with Red Header)
-        PerformanceCardGroup(
-            title = "نقاط ضعف",
-            titleColor = Color(0xFFDC2626),
-            iconBg = Color(0xFFFEE2E2),
-            iconVector = Icons.Filled.ThumbDown,
-            barColor = Color(0xFFEF4444),
-            items = weaknesses,
-            actionTextColor = Color(0xFFEF4444),
-            onDetailsClick = onViewWeaknessesDetails,
-            modifier = Modifier.weight(1f),
-        )
-
-        // Left in RTL (2nd child): Strengths Card ("نقاط قوت" with Green Header)
-        PerformanceCardGroup(
-            title = "نقاط قوت",
-            titleColor = Color(0xFF059669),
-            iconBg = Color(0xFFD1FAE5),
-            iconVector = Icons.Filled.ThumbUp,
-            barColor = Color(0xFF10B981),
-            items = strengths,
-            actionTextColor = AnalyzerNavy,
-            onDetailsClick = onViewStrengthsDetails,
-            modifier = Modifier.weight(1f),
-        )
-    }
-}
-
-@Composable
-fun PerformanceCardGroup(
+private fun SingleMetricCard(
     title: String,
     titleColor: Color,
+    value: String,
+    subtitle: String,
+    subtitleColor: Color,
+    icon: ImageVector,
+    iconTint: Color,
     iconBg: Color,
-    iconVector: ImageVector,
-    barColor: Color,
-    items: List<SubjectPerformance>,
-    actionTextColor: Color,
-    onDetailsClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -662,173 +555,91 @@ fun PerformanceCardGroup(
             .clip(RoundedCornerShape(20.dp))
             .shadow(1.dp, RoundedCornerShape(20.dp), spotColor = Color(0x0A000000)),
         shape = RoundedCornerShape(20.dp),
-        color = Color(0xFFFCFCFE),
+        color = Color.White,
         border = BorderStroke(1.dp, Color(0xFFF1F5F9)),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+                .padding(14.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            // Header: Title + Thumbs Icon
+            // Header Row: Title at start (right), Circular Icon at end (left)
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(24.dp)
-                        .clip(CircleShape)
-                        .background(iconBg),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = iconVector,
-                        contentDescription = null,
-                        tint = titleColor,
-                        modifier = Modifier.size(13.dp),
-                    )
-                }
-                Spacer(modifier = Modifier.width(6.dp))
+                // Title (Right / Start)
                 Text(
                     text = title,
                     color = titleColor,
                     fontFamily = IranSansFontFamily,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
+                    fontSize = 12.sp,
                 )
-            }
 
-            // Subject Rows with Segmented Bar
-            items.forEach { item ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                // Icon (Left / End)
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(CircleShape)
+                        .background(iconBg),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    // Subject Name (Right in RTL)
-                    Text(
-                        text = item.name,
-                        color = AnalyzerNavy,
-                        fontFamily = IranSansFontFamily,
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 10.5.sp,
-                        modifier = Modifier.weight(0.9f),
-                        maxLines = 1,
-                    )
-
-                    // Segmented Progress Bar (Middle)
-                    SegmentedProgressBar(
-                        percentage = item.percentage,
-                        activeColor = barColor,
-                        modifier = Modifier
-                            .weight(1.3f)
-                            .height(6.dp),
-                    )
-
-                    // Percentage Text (Left in RTL)
-                    Text(
-                        text = "${item.percentage.toPersianNumber()}٪",
-                        color = AnalyzerNavy,
-                        fontFamily = IranSansFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp,
-                        textAlign = TextAlign.End,
-                        modifier = Modifier.weight(0.7f),
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = iconTint,
+                        modifier = Modifier.size(15.dp),
                     )
                 }
             }
 
-            // Footer: "مشاهده جزئیات" Link
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
-                    .clickable { onDetailsClick() }
-                    .padding(vertical = 4.dp),
-                horizontalArrangement = Arrangement.Start,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = "مشاهده جزئیات",
-                    color = actionTextColor,
-                    fontFamily = IranSansFontFamily,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 11.sp,
-                )
-                Spacer(modifier = Modifier.width(2.dp))
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                    contentDescription = null,
-                    tint = actionTextColor,
-                    modifier = Modifier.size(15.dp),
-                )
-            }
-        }
-    }
-}
+            Spacer(modifier = Modifier.height(2.dp))
 
-/**
- * Segmented Progress Bar with 3 segments
- */
-@Composable
-fun SegmentedProgressBar(
-    percentage: Int,
-    activeColor: Color,
-    modifier: Modifier = Modifier,
-) {
-    val trackBg = Color(0xFFF1F5F9)
-    Canvas(modifier = modifier) {
-        val totalWidth = size.width
-        val barHeight = size.height
-        val segmentGap = 2.5.dp.toPx()
-        val numSegments = 3
-        val segmentWidth = (totalWidth - (numSegments - 1) * segmentGap) / numSegments
-
-        val filledFraction = (percentage / 100f).coerceIn(0f, 1f)
-        val activeWidth = totalWidth * filledFraction
-
-        for (i in 0 until numSegments) {
-            val startX = i * (segmentWidth + segmentGap)
-
-            // Draw track
-            drawRoundRect(
-                color = trackBg,
-                topLeft = Offset(startX, 0f),
-                size = Size(segmentWidth, barHeight),
-                cornerRadius = CornerRadius(barHeight / 2, barHeight / 2),
+            // Main Counter
+            Text(
+                text = value,
+                color = AppTextDark,
+                fontFamily = IranSansFontFamily,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 24.sp,
             )
 
-            // Draw active fill
-            if (activeWidth > startX) {
-                val fillW = (activeWidth - startX).coerceAtMost(segmentWidth)
-                drawRoundRect(
-                    color = activeColor,
-                    topLeft = Offset(startX, 0f),
-                    size = Size(fillW, barHeight),
-                    cornerRadius = CornerRadius(barHeight / 2, barHeight / 2),
-                )
-            }
+            // Subtitle text / trend
+            Text(
+                text = subtitle,
+                color = subtitleColor,
+                fontFamily = IranSansFontFamily,
+                fontWeight = FontWeight.Medium,
+                fontSize = 11.sp,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+            )
         }
     }
 }
 
 /**
- * 6. Daily Study Time Distribution Chart (توزیع زمان مطالعه در طول روز)
+ * 5. Strengths & Weaknesses Section (نقاط قوت / نقاط ضعف) - Strict RTL
  */
 @Composable
-fun DailyStudyDistributionChart(
-    points: List<StudyDistributionPoint>,
+fun StrengthsAndWeaknessesSection(
+    activeTab: AnalysisTabType,
+    strengths: List<SubjectPerformance>,
+    weaknesses: List<SubjectPerformance>,
+    onTabSelected: (AnalysisTabType) -> Unit,
+    onViewDetailsClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
-            .shadow(1.dp, RoundedCornerShape(24.dp), spotColor = Color(0x0A000000)),
-        shape = RoundedCornerShape(24.dp),
+            .shadow(1.dp, RoundedCornerShape(22.dp), spotColor = Color(0x0A000000)),
+        shape = RoundedCornerShape(22.dp),
         color = Color.White,
         border = BorderStroke(1.dp, Color(0xFFF1F5F9)),
     ) {
@@ -836,43 +647,250 @@ fun DailyStudyDistributionChart(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            // Header Row: Clock Icon + Title (Right in RTL)
+            // Segmented Header: نقاط قوت (Right/First) vs نقاط ضعف (Left/Second)
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Start,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(
+                // Tab 1: نقاط قوت (Right in RTL - first child)
+                val isStrengthsActive = activeTab == AnalysisTabType.STRENGTHS
+                Column(
                     modifier = Modifier
-                        .size(30.dp)
-                        .clip(CircleShape)
-                        .background(AnalyzerPurpleLight),
-                    contentAlignment = Alignment.Center,
+                        .weight(1f)
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { onTabSelected(AnalysisTabType.STRENGTHS) }
+                        .padding(bottom = 6.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    Icon(
-                        imageVector = Icons.Outlined.AccessTime,
-                        contentDescription = null,
-                        tint = AnalyzerPurple,
-                        modifier = Modifier.size(16.dp),
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text(
+                            text = "👍",
+                            fontSize = 14.sp,
+                        )
+                        Text(
+                            text = "نقاط قوت",
+                            color = if (isStrengthsActive) StatGreen else AppTextMuted,
+                            fontFamily = IranSansFontFamily,
+                            fontWeight = if (isStrengthsActive) FontWeight.Bold else FontWeight.Medium,
+                            fontSize = 14.sp,
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.7f)
+                            .height(3.dp)
+                            .clip(RoundedCornerShape(1.5.dp))
+                            .background(if (isStrengthsActive) StatGreen else Color.Transparent),
                     )
                 }
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "توزیع زمان مطالعه در طول روز",
-                    color = AnalyzerNavy,
-                    fontFamily = IranSansFontFamily,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.5.sp,
-                )
+
+                // Tab 2: نقاط ضعف (Left in RTL - second child)
+                val isWeaknessActive = activeTab == AnalysisTabType.WEAKNESSES
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { onTabSelected(AnalysisTabType.WEAKNESSES) }
+                        .padding(bottom = 6.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text(
+                            text = "👎",
+                            fontSize = 14.sp,
+                        )
+                        Text(
+                            text = "نقاط ضعف",
+                            color = if (isWeaknessActive) StatRed else AppTextMuted,
+                            fontFamily = IranSansFontFamily,
+                            fontWeight = if (isWeaknessActive) FontWeight.Bold else FontWeight.Medium,
+                            fontSize = 14.sp,
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.7f)
+                            .height(3.dp)
+                            .clip(RoundedCornerShape(1.5.dp))
+                            .background(if (isWeaknessActive) StatRed else Color.Transparent),
+                    )
+                }
             }
 
-            // Spline Chart with Peak Badge
+            // Subject Progress Bars List (Right = Subject Name, Middle = Bar, Left = Percentage)
+            val currentItems = if (activeTab == AnalysisTabType.STRENGTHS) strengths else weaknesses
+            val activeBarColor = if (activeTab == AnalysisTabType.STRENGTHS) StatGreen else StatRed
+
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                currentItems.forEach { item ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        // Subject Name on RTL Start / Right
+                        Text(
+                            text = item.name,
+                            color = AppTextDark,
+                            fontFamily = IranSansFontFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            modifier = Modifier.width(85.dp),
+                            textAlign = TextAlign.Start,
+                        )
+
+                        // Smooth Horizontal Progress Bar in Middle
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(8.dp)
+                                .padding(horizontal = 10.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(Color(0xFFEDE9FE)),
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .fillMaxWidth(item.percentage / 100f)
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(activeBarColor),
+                            )
+                        }
+
+                        // Percentage on RTL End / Left
+                        Text(
+                            text = "${item.percentage.toString().toPersianNumber()}٪",
+                            color = AppTextDark,
+                            fontFamily = IranSansFontFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            modifier = Modifier.width(42.dp),
+                            textAlign = TextAlign.End,
+                        )
+                    }
+                }
+            }
+
+            // Footer: "مشاهده جزئیات" with left arrow on RTL Start (Right)
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { onViewDetailsClick() }
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Start,
+            ) {
+                Text(
+                    text = "مشاهده جزئیات",
+                    color = AppPrimaryPurple,
+                    fontFamily = IranSansFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.5.sp,
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                    contentDescription = null,
+                    tint = AppPrimaryPurple,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+        }
+    }
+}
+
+/**
+ * 6. Study Time Distribution Chart (توزیع زمان مطالعه در طول روز) - Strict RTL
+ */
+@Composable
+fun DailyStudyDistributionChart(
+    points: List<StudyDistributionPoint>,
+    peakBadgeText: String,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .shadow(1.dp, RoundedCornerShape(22.dp), spotColor = Color(0x0A000000)),
+        shape = RoundedCornerShape(22.dp),
+        color = Color.White,
+        border = BorderStroke(1.dp, Color(0xFFF1F5F9)),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            // Header Row: Title & Clock icon on Start (Right), Peak Badge on End (Left)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                // Right / Start: Title and Clock icon
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .background(AppLightPurpleBg),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.AccessTime,
+                            contentDescription = null,
+                            tint = AppPrimaryPurple,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
+                    Text(
+                        text = "توزیع زمان مطالعه در طول روز",
+                        color = AppTextDark,
+                        fontFamily = IranSansFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.5.sp,
+                    )
+                }
+
+                // Left / End: Peak Badge "۳ ساعت"
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = AppPrimaryPurple,
+                ) {
+                    Text(
+                        text = peakBadgeText,
+                        color = Color.White,
+                        fontFamily = IranSansFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.5.sp,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                    )
+                }
+            }
+
+            // Spline Canvas Chart
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(180.dp),
+                    .height(160.dp),
             ) {
                 DailyStudyChartCanvas(
                     points = points,
@@ -892,10 +910,10 @@ fun DailyStudyChartCanvas(
         val width = size.width
         val height = size.height
 
-        val leftMargin = 32.dp.toPx()
+        val leftMargin = 30.dp.toPx()
         val rightMargin = 20.dp.toPx()
-        val topMargin = 36.dp.toPx()
-        val bottomMargin = 28.dp.toPx()
+        val topMargin = 28.dp.toPx()
+        val bottomMargin = 24.dp.toPx()
 
         val chartWidth = width - leftMargin - rightMargin
         val chartHeight = height - topMargin - bottomMargin
@@ -914,7 +932,7 @@ fun DailyStudyChartCanvas(
             )
         }
 
-        // 2. Map data points to Canvas coordinates (RTL order: index 0 at right, index count-1 at left)
+        // 2. Map coordinates (RTL: 0-4 on right/start, 20-24 on left/end)
         val count = points.size
         val stepX = chartWidth / (count - 1).coerceAtLeast(1)
 
@@ -924,7 +942,7 @@ fun DailyStudyChartCanvas(
             Offset(x, y)
         }
 
-        // 3. Draw smooth cubic curve
+        // 3. Draw gradient area fill and smooth spline curve
         if (coords.isNotEmpty()) {
             val path = Path().apply {
                 moveTo(coords[0].x, coords[0].y)
@@ -939,21 +957,42 @@ fun DailyStudyChartCanvas(
                 }
             }
 
+            // Fill under path
+            val fillPath = Path().apply {
+                addPath(path)
+                lineTo(coords.last().x, topMargin + chartHeight)
+                lineTo(coords.first().x, topMargin + chartHeight)
+                close()
+            }
+
+            drawPath(
+                path = fillPath,
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        AppPrimaryPurple.copy(alpha = 0.25f),
+                        AppPrimaryPurple.copy(alpha = 0.02f),
+                    ),
+                    startY = topMargin,
+                    endY = topMargin + chartHeight,
+                ),
+            )
+
+            // Stroke line
             drawPath(
                 path = path,
-                color = AnalyzerPurple,
+                color = AppPrimaryPurple,
                 style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round),
             )
 
-            // 4. Draw circular nodes
-            coords.forEachIndexed { index, offset ->
+            // Circular nodes
+            coords.forEach { offset ->
                 drawCircle(
                     color = Color.White,
                     radius = 4.5.dp.toPx(),
                     center = offset,
                 )
                 drawCircle(
-                    color = AnalyzerPurple,
+                    color = AppPrimaryPurple,
                     radius = 4.5.dp.toPx(),
                     center = offset,
                     style = Stroke(width = 2.dp.toPx()),
@@ -962,12 +1001,12 @@ fun DailyStudyChartCanvas(
         }
     }
 
-    // Compose Overlay for Y-Labels, X-Labels, and Peak Badge
+    // Y and X Axis Labels Overlay
     Box(modifier = modifier) {
         // Y-axis Label: "ساعت"
         Text(
             text = "ساعت",
-            color = AnalyzerGraySub,
+            color = AppTextMuted,
             fontFamily = IranSansFontFamily,
             fontSize = 9.sp,
             modifier = Modifier
@@ -975,65 +1014,46 @@ fun DailyStudyChartCanvas(
                 .padding(start = 2.dp, top = 2.dp),
         )
 
-        // Y-axis Numbers (4, 3, 2, 1, 0)
+        // Y-axis Numbers
         Column(
             modifier = Modifier
                 .fillMaxHeight()
-                .padding(start = 4.dp, top = 24.dp, bottom = 30.dp),
+                .padding(start = 4.dp, top = 18.dp, bottom = 26.dp),
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
             listOf("۴", "۳", "۲", "۱", "۰").forEach { label ->
                 Text(
                     text = label,
-                    color = AnalyzerGraySub,
+                    color = AppTextMuted,
                     fontFamily = IranSansFontFamily,
                     fontSize = 9.5.sp,
                 )
             }
         }
 
-        // X-axis Time Slots at Bottom (RTL: 0-4 on right, 20-24 on left)
+        // X-axis Time Slots at Bottom (RTL: 0-4 on right/start, 20-24 on left/end)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
-                .padding(start = 24.dp, end = 12.dp, bottom = 4.dp),
+                .padding(start = 28.dp, end = 12.dp, bottom = 2.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             points.forEach { point ->
                 Text(
                     text = point.timeSlot,
-                    color = AnalyzerGraySub,
+                    color = AppTextMuted,
                     fontFamily = IranSansFontFamily,
                     fontWeight = FontWeight.Medium,
-                    fontSize = 10.sp,
+                    fontSize = 9.5.sp,
                 )
             }
-        }
-
-        // Peak Tooltip Badge: "۳ ساعت" pointing at the peak node (12-16)
-        Surface(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .offset(x = 12.dp, y = 6.dp),
-            shape = RoundedCornerShape(12.dp),
-            color = AnalyzerPurple,
-            shadowElevation = 2.dp,
-        ) {
-            Text(
-                text = "۳ ساعت",
-                color = Color.White,
-                fontFamily = IranSansFontFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = 10.5.sp,
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-            )
         }
     }
 }
 
 /**
- * 7. Periodic Reports Banner (گزارش‌های دوره‌ای)
+ * 7. Periodic Reports Card (گزارش‌های دوره‌ای) - Strict RTL
  */
 @Composable
 fun PeriodicReportsBanner(
@@ -1045,10 +1065,10 @@ fun PeriodicReportsBanner(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
-            .shadow(1.dp, RoundedCornerShape(24.dp), spotColor = Color(0x108B5CF6))
+            .shadow(1.dp, RoundedCornerShape(22.dp), spotColor = Color(0x105B42F3))
             .testTag("periodic_reports_banner"),
-        shape = RoundedCornerShape(24.dp),
-        color = Color(0xFFF7F5FE),
+        shape = RoundedCornerShape(22.dp),
+        color = Color(0xFFFBFBFE),
         border = BorderStroke(1.dp, Color(0xFFECE7FE)),
     ) {
         Row(
@@ -1058,79 +1078,48 @@ fun PeriodicReportsBanner(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            // Right in RTL (1st child): Text & Action Buttons
+            // Text & Buttons Column on Right (RTL Start)
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(start = 4.dp, end = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                    .padding(end = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalAlignment = Alignment.Start,
             ) {
                 Text(
                     text = "گزارش‌های دوره‌ای",
-                    color = AnalyzerNavy,
+                    color = AppTextDark,
                     fontFamily = IranSansFontFamily,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.ExtraBold,
                     fontSize = 15.sp,
+                    textAlign = TextAlign.Start,
                 )
                 Text(
                     text = "گزارش‌های هفتگی و ماهانه خود را دانلود کنید و پیشرفتتان را با دوستان مقایسه کنید.",
-                    color = AnalyzerNavyMuted,
+                    color = AppTextMuted,
                     fontFamily = IranSansFontFamily,
                     fontWeight = FontWeight.Normal,
-                    fontSize = 11.sp,
+                    fontSize = 11.5.sp,
                     lineHeight = 17.sp,
+                    textAlign = TextAlign.Start,
                 )
 
-                // Buttons Row: Solid Download + Outlined Compare
+                // Buttons Row: Solid Download (Right) + Outlined Compare (Left)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    // Outlined "مقایسه با دوستان" Button
-                    Surface(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(38.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .clickable { onCompareWithFriends() }
-                            .testTag("compare_with_friends_btn"),
-                        shape = RoundedCornerShape(12.dp),
-                        color = Color.White,
-                        border = BorderStroke(1.dp, Color(0xFFDDD6FE)),
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxSize(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center,
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Group,
-                                contentDescription = null,
-                                tint = AnalyzerPurple,
-                                modifier = Modifier.size(15.dp),
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "مقایسه با دوستان",
-                                color = AnalyzerNavy,
-                                fontFamily = IranSansFontFamily,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 10.5.sp,
-                            )
-                        }
-                    }
-
-                    // Solid "دریافت گزارش" Button
+                    // Solid "دریافت گزارش" Button (Purple - Right)
                     Button(
                         onClick = onDownloadReport,
                         modifier = Modifier
-                            .weight(1f)
+                            .weight(1.1f)
                             .height(38.dp)
                             .testTag("download_report_btn"),
                         shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = AnalyzerPurple),
-                        contentPadding = PaddingValues(horizontal = 6.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = AppPrimaryPurple),
+                        contentPadding = PaddingValues(horizontal = 4.dp),
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -1148,210 +1137,62 @@ fun PeriodicReportsBanner(
                                 color = Color.White,
                                 fontFamily = IranSansFontFamily,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 10.5.sp,
+                                fontSize = 11.sp,
+                            )
+                        }
+                    }
+
+                    // Outlined "مقایسه با دوستان" Button (Left)
+                    Surface(
+                        modifier = Modifier
+                            .weight(1.2f)
+                            .height(38.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { onCompareWithFriends() }
+                            .testTag("compare_with_friends_btn"),
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color.White,
+                        border = BorderStroke(1.dp, Color(0xFFDDD6FE)),
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Group,
+                                contentDescription = null,
+                                tint = AppPrimaryPurple,
+                                modifier = Modifier.size(15.dp),
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "مقایسه با دوستان",
+                                color = AppTextDark,
+                                fontFamily = IranSansFontFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp,
                             )
                         }
                     }
                 }
             }
 
-            // Left in RTL (2nd child): 3D Clipboard Illustration
+            // Illustration on Left (RTL End)
             Box(
-                modifier = Modifier.size(86.dp),
+                modifier = Modifier
+                    .size(75.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(AppLightPurpleBg),
                 contentAlignment = Alignment.Center,
             ) {
-                ReportClipboardIllustration(
-                    modifier = Modifier.size(80.dp),
+                Icon(
+                    imageVector = Icons.Outlined.Assignment,
+                    contentDescription = null,
+                    tint = AppPrimaryPurple,
+                    modifier = Modifier.size(38.dp),
                 )
             }
         }
     }
 }
-
-/**
- * Beautiful Vector 3D AI Robot Illustration with glowing eyes and sparkle bubble
- */
-@Composable
-fun AiRobotVectorIllustration(
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier,
-        contentAlignment = Alignment.Center,
-    ) {
-        // Glowing purple halo circle behind robot
-        Box(
-            modifier = Modifier
-                .size(76.dp)
-                .clip(CircleShape)
-                .background(
-                    Brush.radialGradient(
-                        listOf(
-                            Color(0xFFE9D5FF).copy(alpha = 0.8f),
-                            Color(0xFFF3E8FF).copy(alpha = 0.3f),
-                            Color.Transparent,
-                        )
-                    )
-                ),
-        )
-
-        Canvas(modifier = Modifier.size(68.dp)) {
-            val w = size.width
-            val h = size.height
-
-            // 1. Robot Head (Glossy white capsule shape)
-            drawRoundRect(
-                brush = Brush.verticalGradient(
-                    listOf(Color(0xFFFFFFFF), Color(0xFFF3F4F6))
-                ),
-                topLeft = Offset(w * 0.18f, h * 0.22f),
-                size = Size(w * 0.64f, h * 0.48f),
-                cornerRadius = CornerRadius(w * 0.22f, h * 0.22f),
-            )
-            // Head subtle border
-            drawRoundRect(
-                color = Color(0xFFE5E7EB),
-                topLeft = Offset(w * 0.18f, h * 0.22f),
-                size = Size(w * 0.64f, h * 0.48f),
-                cornerRadius = CornerRadius(w * 0.22f, h * 0.22f),
-                style = Stroke(width = 1.2.dp.toPx()),
-            )
-
-            // 2. Robot Ears/Antennas with purple glow rings
-            drawRoundRect(
-                color = Color(0xFF8B5CF6),
-                topLeft = Offset(w * 0.11f, h * 0.34f),
-                size = Size(w * 0.08f, h * 0.24f),
-                cornerRadius = CornerRadius(w * 0.04f, h * 0.04f),
-            )
-            drawRoundRect(
-                color = Color(0xFF8B5CF6),
-                topLeft = Offset(w * 0.81f, h * 0.34f),
-                size = Size(w * 0.08f, h * 0.24f),
-                cornerRadius = CornerRadius(w * 0.04f, h * 0.04f),
-            )
-
-            // 3. Dark Purple Visor Face
-            drawRoundRect(
-                brush = Brush.verticalGradient(
-                    listOf(Color(0xFF1E1B4B), Color(0xFF312E81))
-                ),
-                topLeft = Offset(w * 0.25f, h * 0.28f),
-                size = Size(w * 0.50f, h * 0.36f),
-                cornerRadius = CornerRadius(w * 0.14f, h * 0.14f),
-            )
-
-            // 4. Glowing Blue-Purple Digital Eyes
-            drawRoundRect(
-                color = Color(0xFFC084FC),
-                topLeft = Offset(w * 0.32f, h * 0.38f),
-                size = Size(w * 0.12f, h * 0.15f),
-                cornerRadius = CornerRadius(w * 0.06f, h * 0.06f),
-            )
-            drawRoundRect(
-                color = Color(0xFFC084FC),
-                topLeft = Offset(w * 0.56f, h * 0.38f),
-                size = Size(w * 0.12f, h * 0.15f),
-                cornerRadius = CornerRadius(w * 0.06f, h * 0.06f),
-            )
-
-            // 5. Robot Upper Torso/Body
-            drawRoundRect(
-                brush = Brush.verticalGradient(
-                    listOf(Color(0xFFFFFFFF), Color(0xFFE5E7EB))
-                ),
-                topLeft = Offset(w * 0.26f, h * 0.68f),
-                size = Size(w * 0.48f, h * 0.28f),
-                cornerRadius = CornerRadius(w * 0.12f, h * 0.12f),
-            )
-        }
-
-        // Sparkle Speech Bubble on top right of the robot
-        Surface(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .offset(x = 4.dp, y = (-2).dp),
-            shape = RoundedCornerShape(10.dp),
-            color = Color.White,
-            border = BorderStroke(1.dp, Color(0xFFDDD6FE)),
-            shadowElevation = 2.dp,
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 5.dp, vertical = 3.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = "✦",
-                    color = AnalyzerPurple,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 12.sp,
-                )
-            }
-        }
-    }
-}
-
-/**
- * 3D Styled Clipboard Illustration with chart and checkmarks
- */
-@Composable
-fun ReportClipboardIllustration(
-    modifier: Modifier = Modifier,
-) {
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-
-        // 1. Purple Clipboard Board
-        drawRoundRect(
-            brush = Brush.verticalGradient(
-                listOf(Color(0xFFEDE9FE), Color(0xFFDDD6FE))
-            ),
-            topLeft = Offset(w * 0.15f, h * 0.15f),
-            size = Size(w * 0.70f, h * 0.80f),
-            cornerRadius = CornerRadius(w * 0.12f, h * 0.12f),
-        )
-
-        // 2. White Paper Sheet
-        drawRoundRect(
-            color = Color.White,
-            topLeft = Offset(w * 0.22f, h * 0.22f),
-            size = Size(w * 0.56f, h * 0.68f),
-            cornerRadius = CornerRadius(w * 0.08f, h * 0.08f),
-        )
-
-        // 3. Top Metal Clip
-        drawRoundRect(
-            color = Color(0xFF8B5CF6),
-            topLeft = Offset(w * 0.35f, h * 0.08f),
-            size = Size(w * 0.30f, h * 0.12f),
-            cornerRadius = CornerRadius(w * 0.04f, h * 0.04f),
-        )
-
-        // 4. Little Bar Chart on paper
-        val chartY = h * 0.62f
-        val barW = w * 0.08f
-        // Bar 1
-        drawRoundRect(
-            color = Color(0xFFC4B5FD),
-            topLeft = Offset(w * 0.30f, chartY - h * 0.12f),
-            size = Size(barW, h * 0.18f),
-            cornerRadius = CornerRadius(w * 0.02f, h * 0.02f),
-        )
-        // Bar 2
-        drawRoundRect(
-            color = Color(0xFF8B5CF6),
-            topLeft = Offset(w * 0.44f, chartY - h * 0.22f),
-            size = Size(barW, h * 0.28f),
-            cornerRadius = CornerRadius(w * 0.02f, h * 0.02f),
-        )
-        // Bar 3
-        drawRoundRect(
-            color = Color(0xFFA78BFA),
-            topLeft = Offset(w * 0.58f, chartY - h * 0.16f),
-            size = Size(barW, h * 0.22f),
-            cornerRadius = CornerRadius(w * 0.02f, h * 0.02f),
-        )
-    }
-}
-

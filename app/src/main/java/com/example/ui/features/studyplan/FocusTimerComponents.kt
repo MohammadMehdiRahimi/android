@@ -15,21 +15,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Headset
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.TaskAlt
-import androidx.compose.material.icons.outlined.PieChart
-import androidx.compose.material.icons.outlined.PauseCircle
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.EditNote
-import androidx.compose.material.icons.outlined.Celebration
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -44,6 +31,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -51,6 +40,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.example.ui.core.components.AppBackground
+import com.example.ui.theme.IranSansFontFamily
 import com.example.ui.theme.LocalShetabColors
 import com.example.ui.core.toPersianNumber
 import kotlinx.coroutines.delay
@@ -60,84 +50,188 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalView
 
 @Composable
-fun TimerStyleSelector(selectedStyle: TimerStyle, onStyleChanged:(TimerStyle) -> Unit, colors: com.example.ui.theme.ShetabColorPalette) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("نمای بصری تایمر", color = Color(0xFF1E1B4B), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+fun StudyCyclesStepper(
+    totalRounds: Int,
+    completedRounds: Int,
+    breakDurationMins: Int,
+    isBreak: Boolean = false,
+    modifier: Modifier = Modifier
+) {
+    val displayRounds = maxOf(3, totalRounds)
+    val breakTimeText = "${breakDurationMins.toPersianString()}:۰۰"
+
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color(0xFFF8FAFC), RoundedCornerShape(16.dp))
-                .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(16.dp))
-                .padding(4.dp),
+            modifier = modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            TimerStyle.values().forEach { style ->
-                val isSelected = selectedStyle == style
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(if (isSelected) Color(0xFF8B5CF6) else Color.Transparent)
-                        .clickable { onStyleChanged(style) }
-                        .padding(vertical = 10.dp),
-                    contentAlignment = Alignment.Center
+            for (index in 0 until displayRounds) {
+                val roundNum = index + 1
+                val isCompleted = index < completedRounds
+                val isActive = (index == completedRounds && !isBreak) || (isCompleted && index == displayRounds - 1)
+                val isPending = index > completedRounds
+
+                // Round Step Column
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Text(
-                        text = style.title,
-                        color = if (isSelected) Color.White else Color(0xFF64748B),
-                        fontSize = 12.sp,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-                    )
+                    Box(
+                        modifier = Modifier.size(36.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        when {
+                            isActive -> {
+                                // Active: Glowing purple halo border with solid purple inner circle and white number
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .border(2.dp, Color(0xFFC4B5FD), CircleShape)
+                                        .padding(2.5.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFF6366F1)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = roundNum.toPersianString(),
+                                        color = Color.White,
+                                        fontFamily = IranSansFontFamily,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                            isCompleted -> {
+                                // Completed: Soft purple circle with checkmark or number
+                                Box(
+                                    modifier = Modifier
+                                        .size(30.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFFEEF2FF))
+                                        .border(1.2.dp, Color(0xFF818CF8), CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = roundNum.toPersianString(),
+                                        color = Color(0xFF6366F1),
+                                        fontFamily = IranSansFontFamily,
+                                        fontSize = 12.5.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                            else -> {
+                                // Pending: Light gray border with gray number
+                                Box(
+                                    modifier = Modifier
+                                        .size(30.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFFF8FAFC))
+                                        .border(1.2.dp, Color(0xFFCBD5E1), CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = roundNum.toPersianString(),
+                                        color = Color(0xFF64748B),
+                                        fontFamily = IranSansFontFamily,
+                                        fontSize = 12.5.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Labels below circle
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(1.dp)
+                    ) {
+                        Text(
+                            text = "دور ${roundNum.toPersianString()}",
+                            fontFamily = IranSansFontFamily,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF0F172A)
+                        )
+                        Text(
+                            text = when {
+                                isActive -> "در حال اجرا"
+                                isCompleted -> "انجام شده"
+                                else -> "در انتظار"
+                            },
+                            fontFamily = IranSansFontFamily,
+                            fontSize = 10.sp,
+                            fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium,
+                            color = when {
+                                isActive -> Color(0xFF6366F1)
+                                isCompleted -> Color(0xFF4F46E5)
+                                else -> Color(0xFF94A3B8)
+                            }
+                        )
+                    }
+                }
+
+                // Connector between steps
+                if (index < displayRounds - 1) {
+                    val isLineActive = index < completedRounds || (index == 0 && isActive)
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(horizontal = 2.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Text(
+                            text = "استراحت",
+                            fontFamily = IranSansFontFamily,
+                            fontSize = 10.sp,
+                            color = if (isLineActive) Color(0xFF475569) else Color(0xFF94A3B8),
+                            fontWeight = FontWeight.Medium
+                        )
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            // Connecting line
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(2.dp)
+                                    .background(
+                                        if (isLineActive) Color(0xFF818CF8) else Color(0xFFCBD5E1),
+                                        CircleShape
+                                    )
+                            )
+                            // Subtle node dot in center of connector
+                            Box(
+                                modifier = Modifier
+                                    .size(5.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        if (isLineActive) Color(0xFF6366F1) else Color(0xFF94A3B8)
+                                    )
+                            )
+                        }
+
+                        Text(
+                            text = breakTimeText,
+                            fontFamily = IranSansFontFamily,
+                            fontSize = 9.5.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (isLineActive) Color(0xFF475569) else Color(0xFF94A3B8)
+                        )
+                    }
                 }
             }
         }
     }
 }
 
-@Composable
-fun TimerSettingItem(title: String, value: Int, onValueChange: (Int) -> Unit, colors: com.example.ui.theme.ShetabColorPalette) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color(0xFFF8FAFC), RoundedCornerShape(16.dp))
-            .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(16.dp))
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(title, color = Color(0xFF1E1B4B), fontSize = 13.sp, fontWeight = FontWeight.Bold)
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(
-                modifier = Modifier
-                    .size(34.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF8B5CF6).copy(alpha = 0.12f))
-                    .clickable { if (value > 1) onValueChange(value - 1) },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Default.Remove, contentDescription = "Decrease", tint = Color(0xFF8B5CF6), modifier = Modifier.size(16.dp))
-            }
-            Text(
-                text = value.toPersianString(),
-                color = Color(0xFF1E1B4B),
-                fontWeight = FontWeight.Black,
-                fontSize = 15.sp,
-                modifier = Modifier.widthIn(min = 28.dp),
-                textAlign = TextAlign.Center
-            )
-            Box(
-                modifier = Modifier
-                    .size(34.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF8B5CF6))
-                    .clickable { onValueChange(value + 1) },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Increase", tint = Color.White, modifier = Modifier.size(16.dp))
-            }
-        }
-    }
-}
 @Composable
 fun EqualizerBarAnimated(isRunning: Boolean, customColor: Color? = null) {
     val infiniteTransition = rememberInfiniteTransition(label = "Equalizer")
@@ -296,435 +390,266 @@ fun TimeTicker(minutes: Int, seconds: Int, fontSize: androidx.compose.ui.unit.Te
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TaskCompletionBottomSheet(
-    taskTitle: String,
-    onDismiss: () -> Unit,
-    onCompleteFull: () -> Unit,
-    onCompletePartial: (percent: Int, note: String?) -> Unit,
-    onPauseAndExit: () -> Unit,
+fun FocusBottomAudioPlayer(
+    currentSound: String,
+    isPlaying: Boolean,
+    onTogglePlay: () -> Unit,
+    onStop: () -> Unit,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
+    onOpenSoundPicker: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    var isPartialMode by remember { mutableStateOf(false) }
-    var partialPercent by remember { mutableFloatStateOf(50f) }
-    var partialNote by remember { mutableStateOf("") }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    // Simulated track progress (looping with timer or smooth animated position)
+    var progressFraction by remember { mutableFloatStateOf(0.348f) } // approx 08:43 of 25:00
+    var isRepeatActive by rememberSaveable { mutableStateOf(false) }
 
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = Color.White,
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-        dragHandle = {
-            Box(
-                modifier = Modifier
-                    .padding(top = 12.dp, bottom = 8.dp)
-                    .width(44.dp)
-                    .height(4.dp)
-                    .background(Color(0xFFCBD5E1), CircleShape)
-            )
+    // Auto-advance progress slightly while audio is active
+    LaunchedEffect(isPlaying) {
+        while (isPlaying) {
+            delay(1000L)
+            progressFraction = (progressFraction + 0.002f).let { 
+                if (it > 1f) {
+                    if (isRepeatActive) 0f else 1f
+                } else it 
+            }
         }
-    ) {
-        Column(
-            modifier = Modifier
+    }
+
+    val totalDurationSecs = 25 * 60
+    val currentSecs = (progressFraction * totalDurationSecs).toInt()
+    val curM = currentSecs / 60
+    val curS = currentSecs % 60
+    val currentFormatted = String.format("%02d:%02d", curM, curS).toPersianNumber()
+    val totalFormatted = "۲۵:۰۰"
+
+    // Primary Violet brand color from design system
+    val brandViolet = Color(0xFF6C4ED9)
+    val navyText = Color(0xFF1E1B4B)
+    val graySubText = Color(0xFF64748B)
+
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+        Surface(
+            modifier = modifier
                 .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+                .padding(horizontal = 16.dp, vertical = 0.dp),
+            shape = RoundedCornerShape(16.dp),
+            color = Color.White,
+            border = BorderStroke(1.dp, Color(0xFFF1F5F9)),
+            shadowElevation = 1.5.dp
         ) {
-            // Header
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 7.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
+                // Main Row: [Right: Info + Controls] and [Left: Album Art]
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Surface(
-                        shape = CircleShape,
-                        color = Color(0xFFF3E8FF),
-                        modifier = Modifier.size(34.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = if (isPartialMode) Icons.Outlined.EditNote else Icons.Outlined.Celebration,
-                                contentDescription = null,
-                                tint = PlanPurple,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
-                    Text(
-                        text = if (isPartialMode) "ثبت پایان نیمه‌کاره" else "پایان مطالعه و اتمام تسک",
-                        fontFamily = com.example.ui.theme.IranSansFontFamily,
-                        fontSize = 16.5.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1E1B4B)
-                    )
-                }
-
-                if (isPartialMode) {
-                    TextButton(onClick = { isPartialMode = false }) {
-                        Text(
-                            text = "بازگشت",
-                            fontFamily = com.example.ui.theme.IranSansFontFamily,
-                            color = PlanPurple,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp
-                        )
-                    }
-                } else {
-                    IconButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Close,
-                            contentDescription = "بستن",
-                            tint = Color(0xFF64748B),
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-            }
-
-            if (taskTitle.isNotBlank()) {
-                Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    color = Color(0xFFF8FAFC),
-                    border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 14.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    // Right in RTL: Music Title & Controls
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = Color(0xFFE0E7FF),
-                            modifier = Modifier.size(28.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Outlined.TaskAlt,
-                                    contentDescription = null,
-                                    tint = Color(0xFF4338CA),
-                                    modifier = Modifier.size(15.dp)
-                                )
-                            }
-                        }
-                        Text(
-                            text = taskTitle,
-                            fontFamily = com.example.ui.theme.IranSansFontFamily,
-                            fontSize = 12.5.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF334155),
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
-            }
-
-            if (!isPartialMode) {
-                // 1. Full Completion Card (100%)
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(18.dp))
-                        .clickable { onCompleteFull() },
-                    shape = RoundedCornerShape(18.dp),
-                    color = Color(0xFFFAF5FF),
-                    border = BorderStroke(1.5.dp, PlanPurple.copy(alpha = 0.6f))
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = PlanPurple,
-                            modifier = Modifier.size(40.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Default.CheckCircle,
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(22.dp)
-                                )
-                            }
-                        }
+                        // Title & Subtitle
                         Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                            modifier = Modifier.clickable { onOpenSoundPicker() }
                         ) {
                             Text(
-                                text = "اتمام کامل تسک (۱۰۰٪)",
-                                fontFamily = com.example.ui.theme.IranSansFontFamily,
-                                fontSize = 14.sp,
+                                text = "موسیقی تمرکز",
+                                fontFamily = IranSansFontFamily,
+                                fontSize = 12.5.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = PlanPurpleDark
+                                color = navyText,
+                                maxLines = 1
                             )
                             Text(
-                                text = "مطالعه این تسک به پایان رسید و امتیاز آن ثبت می‌شود",
-                                fontFamily = com.example.ui.theme.IranSansFontFamily,
-                                fontSize = 11.5.sp,
-                                color = Color(0xFF6B21A8)
+                                text = if (currentSound == "سکوت ملو") "صدای طبیعت و موج آرام" else currentSound,
+                                fontFamily = IranSansFontFamily,
+                                fontSize = 10.5.sp,
+                                fontWeight = FontWeight.Normal,
+                                color = graySubText,
+                                maxLines = 1
                             )
                         }
-                    }
-                }
 
-                // 2. Partial Completion Card
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(18.dp))
-                        .clickable { isPartialMode = true },
-                    shape = RoundedCornerShape(18.dp),
-                    color = Color.White,
-                    border = BorderStroke(1.dp, Color(0xFFE2E8F0))
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = Color(0xFFEEF2FF),
-                            modifier = Modifier.size(40.dp)
+                        // Controls Row (RTL Order: 1. Next, 2. Previous, 3. Stop, 4. Repeat)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(1.dp)
                         ) {
-                            Box(contentAlignment = Alignment.Center) {
+                            // 1. آهنگ بعدی (Next Track)
+                            IconButton(
+                                onClick = onNext,
+                                modifier = Modifier.size(32.dp)
+                            ) {
                                 Icon(
-                                    imageVector = Icons.Outlined.PieChart,
-                                    contentDescription = null,
-                                    tint = Color(0xFF4F46E5),
+                                    imageVector = Icons.Filled.SkipNext,
+                                    contentDescription = "آهنگ بعدی",
+                                    tint = brandViolet,
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
-                        }
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
-                            Text(
-                                text = "پایان نیمه‌کاره و ثبت پیشرفت",
-                                fontFamily = com.example.ui.theme.IranSansFontFamily,
-                                fontSize = 13.5.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF1E293B)
-                            )
-                            Text(
-                                text = "تعیین درصد مطالعه‌شده و یادداشت برای دور بعدی",
-                                fontFamily = com.example.ui.theme.IranSansFontFamily,
-                                fontSize = 11.5.sp,
-                                color = Color(0xFF64748B)
-                            )
-                        }
-                    }
-                }
 
-                // 3. Pause & Exit Card
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(18.dp))
-                        .clickable { onPauseAndExit() },
-                    shape = RoundedCornerShape(18.dp),
-                    color = Color(0xFFF8FAFC),
-                    border = BorderStroke(1.dp, Color(0xFFE2E8F0))
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = Color(0xFFF1F5F9),
-                            modifier = Modifier.size(40.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
+                            // 2. آهنگ قبلی (Previous Track)
+                            IconButton(
+                                onClick = onPrevious,
+                                modifier = Modifier.size(32.dp)
+                            ) {
                                 Icon(
-                                    imageVector = Icons.Outlined.PauseCircle,
-                                    contentDescription = null,
-                                    tint = Color(0xFF475569),
+                                    imageVector = Icons.Filled.SkipPrevious,
+                                    contentDescription = "آهنگ قبلی",
+                                    tint = brandViolet,
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
+
+                            // 3. دکمه Stop (با آیکون مربع Stop، یا در صورت متوقف بودن Play)
+                            IconButton(
+                                onClick = {
+                                    if (isPlaying) onStop() else onTogglePlay()
+                                },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (isPlaying) Icons.Filled.Stop else Icons.Filled.PlayArrow,
+                                    contentDescription = if (isPlaying) "توقف" else "پخش",
+                                    tint = brandViolet,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+
+                            // 4. دکمه Repeat (با هایلایت بسیار ملایم بنفش در صورت فعال بودن)
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(if (isRepeatActive) brandViolet.copy(alpha = 0.12f) else Color.Transparent)
+                                    .clickable { isRepeatActive = !isRepeatActive },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = if (isRepeatActive) Icons.Filled.RepeatOne else Icons.Outlined.Repeat,
+                                    contentDescription = "تکرار",
+                                    tint = if (isRepeatActive) brandViolet else graySubText,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
                         }
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                    }
+
+                    Spacer(modifier = Modifier.width(10.dp))
+
+                    // Left in RTL: Album Art (40x40dp, 10dp rounded corner)
+                    Surface(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable { onOpenSoundPicker() },
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0xFFEDE9FE)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    Brush.linearGradient(
+                                        colors = listOf(
+                                            Color(0xFF6C4ED9),
+                                            Color(0xFF818CF8),
+                                            Color(0xFF38BDF8)
+                                        )
+                                    )
+                                ),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Text(
-                                text = "توقف موقت و ذخیره زمان",
-                                fontFamily = com.example.ui.theme.IranSansFontFamily,
-                                fontSize = 13.5.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF334155)
-                            )
-                            Text(
-                                text = "ثبت زمان مطالعه تا این لحظه و خروج بدون اتمام تسک",
-                                fontFamily = com.example.ui.theme.IranSansFontFamily,
-                                fontSize = 11.5.sp,
-                                color = Color(0xFF64748B)
+                            Icon(
+                                imageVector = Icons.Filled.Landscape,
+                                contentDescription = "کاور موسیقی تمرکز",
+                                tint = Color.White.copy(alpha = 0.95f),
+                                modifier = Modifier.size(22.dp)
                             )
                         }
                     }
                 }
 
-                // 4. Continue Study TextButton
-                TextButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.fillMaxWidth()
+                // Progress Bar with current time and total time in Persian
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text(
-                        text = "انصراف و ادامه مطالعه",
-                        fontFamily = com.example.ui.theme.IranSansFontFamily,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF64748B)
+                        text = currentFormatted,
+                        fontFamily = IranSansFontFamily,
+                        fontSize = 10.sp,
+                        color = graySubText,
+                        fontWeight = FontWeight.Medium
                     )
-                }
-            } else {
-                // Partial Mode Form
-                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        color = Color(0xFFFAF5FF),
-                        border = BorderStroke(1.dp, Color(0xFFEDE9FE))
+
+                    // Minimal custom progress bar with tiny thumb
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(10.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Column(
-                            modifier = Modifier.padding(14.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        // Background inactive track
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(2.5.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(Color(0xFFE2E8F0))
+                        )
+
+                        // Active track
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(fraction = progressFraction.coerceIn(0f, 1f))
+                                .height(2.5.dp)
+                                .align(Alignment.CenterStart)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(brandViolet)
+                        )
+
+                        // Small circular thumb
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .align(Alignment.CenterStart)
                         ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth(fraction = progressFraction.coerceIn(0f, 1f))
                             ) {
-                                Text(
-                                    text = "میزان پیشرفت مطالعه:",
-                                    fontFamily = com.example.ui.theme.IranSansFontFamily,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF1E1B4B)
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.CenterEnd)
+                                        .size(7.dp)
+                                        .clip(CircleShape)
+                                        .background(brandViolet)
                                 )
-                                Surface(
-                                    shape = RoundedCornerShape(10.dp),
-                                    color = PlanPurple
-                                ) {
-                                    Text(
-                                        text = "${partialPercent.toInt().toPersianString()} ٪",
-                                        fontFamily = com.example.ui.theme.IranSansFontFamily,
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.ExtraBold,
-                                        color = Color.White,
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                                    )
-                                }
-                            }
-
-                            Slider(
-                                value = partialPercent,
-                                onValueChange = { partialPercent = it },
-                                valueRange = 1f..99f,
-                                steps = 97,
-                                colors = SliderDefaults.colors(
-                                    thumbColor = PlanPurple,
-                                    activeTrackColor = PlanPurple,
-                                    inactiveTrackColor = Color(0xFFE2E8F0)
-                                )
-                            )
-
-                            // Quick Chips (25%, 50%, 75%, 90%)
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                listOf(25, 50, 75, 90).forEach { pct ->
-                                    val isSelected = partialPercent.toInt() == pct
-                                    Surface(
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .clip(RoundedCornerShape(10.dp))
-                                            .clickable { partialPercent = pct.toFloat() },
-                                        shape = RoundedCornerShape(10.dp),
-                                        color = if (isSelected) PlanPurpleLight else Color.White,
-                                        border = BorderStroke(1.dp, if (isSelected) PlanPurple else Color(0xFFE2E8F0))
-                                    ) {
-                                        Box(
-                                            modifier = Modifier.padding(vertical = 8.dp),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                text = "$pct ٪".toPersianNumber(),
-                                                fontFamily = com.example.ui.theme.IranSansFontFamily,
-                                                fontSize = 12.sp,
-                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                                color = if (isSelected) PlanPurpleDark else Color(0xFF64748B)
-                                            )
-                                        }
-                                    }
-                                }
                             }
                         }
                     }
 
-                    // Optional Note Input
-                    OutlinedTextField(
-                        value = partialNote,
-                        onValueChange = { partialNote = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("توضیحات یا علت توقف (اختیاری)", fontFamily = com.example.ui.theme.IranSansFontFamily) },
-                        placeholder = { Text("مثال: تا صفحه ۴۵ مطالعه شد", fontFamily = com.example.ui.theme.IranSansFontFamily) },
-                        shape = RoundedCornerShape(14.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = PlanPurple,
-                            unfocusedBorderColor = Color(0xFFCBD5E1)
-                        ),
-                        minLines = 2,
-                        maxLines = 3
+                    Text(
+                        text = totalFormatted,
+                        fontFamily = IranSansFontFamily,
+                        fontSize = 10.sp,
+                        color = graySubText,
+                        fontWeight = FontWeight.Medium
                     )
-
-                    // Submit Partial Completion Button
-                    Button(
-                        onClick = {
-                            onCompletePartial(partialPercent.toInt(), partialNote.ifBlank { null })
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(50.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = PlanPurple),
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
-                        Text(
-                            text = "ثبت پایان نیمه‌کاره (${partialPercent.toInt().toPersianString()}٪)",
-                            fontFamily = com.example.ui.theme.IranSansFontFamily,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                    }
                 }
             }
         }
     }
 }
+
 

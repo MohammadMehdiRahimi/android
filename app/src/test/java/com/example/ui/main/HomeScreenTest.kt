@@ -57,7 +57,7 @@ class HomeScreenTest {
         composeTestRule.onNodeWithText("مطالعه گروهی و رقابت با دوستان").assertIsDisplayed()
         composeTestRule.onNodeWithText("پرسش از همکلاسی‌ها").assertIsDisplayed()
         composeTestRule.onNodeWithText("پاسخ سریع به سؤالات و رفع اشکال درسی").assertIsDisplayed()
-        composeTestRule.onNodeWithText("آزمون‌ساز").assertIsDisplayed()
+        composeTestRule.onNodeWithText("آزمون‌ها").assertIsDisplayed()
     }
 
     @Test

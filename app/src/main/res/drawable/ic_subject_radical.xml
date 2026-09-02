@@ -1,0 +1,21 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Radical symbol √ -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FF8F00"
+        android:strokeWidth="2.2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M2,13 L4.5,13 L7.5,20 L11.5,4 L19,4" />
+    <!-- x symbol -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FF8F00"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M14,12 L18,18 M18,12 L14,18" />
+</vector>

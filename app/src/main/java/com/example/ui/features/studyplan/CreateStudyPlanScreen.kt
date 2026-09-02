@@ -54,6 +54,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.AccessTime
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.CalendarToday
+import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.EditCalendar
 import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Schedule
@@ -166,18 +167,22 @@ fun CreateStudyPlanScreen(
         }
     }
 
+    var showCalendarModal by remember { mutableStateOf(false) }
+
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
         Scaffold(
-            containerColor = CreatePlanBg,
+            containerColor = PlanLightBg,
             topBar = {
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
                         .statusBarsPadding(),
-                    color = CreatePlanBg,
+                    color = PlanLightBg,
                 ) {
-                    CreatePlanTopBar(
+                    PixelPerfectPlanHeader(
+                        studentName = state.studentName,
                         onBackClick = onBackClick,
+                        onCalendarClick = { showCalendarModal = true },
                     )
                 }
             },
@@ -185,27 +190,65 @@ fun CreateStudyPlanScreen(
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .shadow(16.dp, spotColor = Color(0x1A000000)),
+                        .shadow(12.dp, spotColor = Color(0x10000000)),
                     color = Color.White,
                 ) {
-                    Column(
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .navigationBarsPadding()
-                            .padding(horizontal = 20.dp, vertical = 12.dp),
+                            .padding(horizontal = 20.dp, vertical = 14.dp),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
+                        // 1. Copy from previous day button (Right in RTL): Outlined white button with purple copy icon
                         Surface(
                             modifier = Modifier
-                                .fillMaxWidth()
+                                .weight(1f)
                                 .height(52.dp)
-                                .clip(RoundedCornerShape(16.dp))
+                                .clip(RoundedCornerShape(18.dp))
+                                .clickable { viewModel.copyPreviousDayPlan() }
+                                .testTag("copy_previous_day_button"),
+                            shape = RoundedCornerShape(18.dp),
+                            color = Color.White,
+                            border = BorderStroke(1.dp, PlanCardBorderColor),
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxSize(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center,
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.create_plan_copy_previous_day_action),
+                                    fontFamily = IranSansFontFamily,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 14.sp,
+                                    color = PlanHeaderNavy,
+                                    textAlign = TextAlign.Center,
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Icon(
+                                    imageVector = Icons.Outlined.ContentCopy,
+                                    contentDescription = null,
+                                    tint = PlanBrandPurple,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            }
+                        }
+
+                        // 2. Save Day Plan Button (Left in RTL): Primary solid purple button with checkmark icon
+                        Surface(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(52.dp)
+                                .clip(RoundedCornerShape(18.dp))
                                 .clickable(enabled = !state.isSubmitting) {
-                                    viewModel.saveStudyPlan()
+                                    viewModel.saveDayPlan(onSuccess = onNavigateToTasks)
                                 }
-                                .testTag("save_study_plan_button"),
-                            shape = RoundedCornerShape(16.dp),
-                            color = PlanPurple,
-                            shadowElevation = 3.dp,
+                                .testTag("save_day_plan_button"),
+                            shape = RoundedCornerShape(18.dp),
+                            color = PlanBrandPurple,
+                            shadowElevation = 2.dp,
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxSize(),
@@ -214,29 +257,22 @@ fun CreateStudyPlanScreen(
                             ) {
                                 if (state.isSubmitting) {
                                     CircularProgressIndicator(
-                                        modifier = Modifier.size(22.dp),
+                                        modifier = Modifier.size(20.dp),
                                         color = Color.White,
                                         strokeWidth = 2.dp,
                                     )
-                                    Spacer(modifier = Modifier.width(10.dp))
-                                    Text(
-                                        text = "در حال ثبت برنامه...",
-                                        color = Color.White,
-                                        fontFamily = IranSansFontFamily,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 15.sp,
-                                    )
                                 } else {
                                     Text(
-                                        text = stringResource(id = R.string.create_plan_save_button),
-                                        color = Color.White,
+                                        text = stringResource(R.string.create_plan_save_day_action),
                                         fontFamily = IranSansFontFamily,
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 16.sp,
+                                        fontSize = 14.5.sp,
+                                        color = Color.White,
+                                        textAlign = TextAlign.Center,
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Icon(
-                                        imageVector = Icons.Default.AutoAwesome,
+                                        imageVector = Icons.Default.Check,
                                         contentDescription = null,
                                         tint = Color.White,
                                         modifier = Modifier.size(20.dp),
@@ -248,140 +284,89 @@ fun CreateStudyPlanScreen(
                 }
             },
         ) { paddingValues ->
-            if (state.subjectsByGrade.isEmpty() && !state.isLoadingCatalog) {
-                NetworkErrorView(
-                    modifier = Modifier.padding(paddingValues),
-                    title = stringResource(R.string.error_network_title),
-                    description = state.errorMessage ?: stringResource(R.string.error_network_desc),
-                    isRetrying = state.isLoadingCatalog,
-                    fullScreen = true,
-                    backgroundColor = CreatePlanBg,
-                    onRetry = { viewModel.retryCatalog() }
-                )
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                        .testTag("create_study_plan_lazy_column"),
-                    contentPadding = PaddingValues(top = 4.dp, bottom = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                ) {
-                    // 1. Direct Interactive Date Bar (Clicking opens calendar)
-                    item(key = "interactive_date_bar") {
-                        InteractiveDateSelectorCard(
-                            selectedDate = state.selectedDate,
-                            onDateSelected = { viewModel.selectDate(it) },
-                        )
-                    }
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .testTag("create_study_plan_lazy_column"),
+                contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                // 1. Horizontal 7-Day Week Selector
+                item(key = "week_selector") {
+                    PixelPerfectWeekSelector(
+                        weekDays = state.weekDays,
+                        onDaySelected = { viewModel.selectDate(it) },
+                        onPreviousWeekClick = { viewModel.selectDate(state.selectedDate.minusDays(7)) },
+                        onNextWeekClick = { viewModel.selectDate(state.selectedDate.plusDays(7)) },
+                    )
+                }
 
-                    // 2. Multi-Book & Multi-Chapter Planning Blocks
-                    if (state.isLoadingCatalog) {
-                        item(key = "book_skeleton") {
-                            BookPlanBlockSkeleton()
-                        }
-                    } else {
-                        items(
-                            items = state.bookBlocks,
-                            key = { it.bookBlockId },
-                        ) { bookBlock ->
-                            val subjects = state.getSubjectsForGrade(bookBlock.selectedGrade)
-                            val currentSubject = subjects.firstOrNull { it.id == bookBlock.selectedSubjectId } ?: subjects.firstOrNull()
+                // 2. Daily Summary Progress Card
+                item(key = "daily_summary_card") {
+                    PixelPerfectDailySummaryCard(
+                        totalHoursText = state.totalHoursText,
+                        totalSessionsCount = state.totalSessionsCount,
+                    )
+                }
 
-                            BookPlanCard(
-                                bookIndex = state.bookBlocks.indexOf(bookBlock),
-                                bookBlock = bookBlock,
-                                grades = state.grades,
-                                subjects = subjects,
-                                selectedSubject = currentSubject,
-                                canDeleteBook = state.bookBlocks.size > 1,
-                                onGradeSelected = { gradeKey, gradeName ->
-                                    viewModel.selectGradeForBook(bookBlock.bookBlockId, gradeKey, gradeName)
-                                },
-                                onSubjectSelected = { subjectId ->
-                                    viewModel.selectSubjectForBook(bookBlock.bookBlockId, subjectId)
-                                },
-                                onAddChapter = {
-                                    viewModel.addChapterBlockToBook(bookBlock.bookBlockId)
-                                },
-                                onRemoveChapter = { chBlockId ->
-                                    viewModel.removeChapterBlockFromBook(bookBlock.bookBlockId, chBlockId)
-                                },
-                                onSelectChapter = { chBlockId, chId ->
-                                    viewModel.selectChapterForBookBlock(bookBlock.bookBlockId, chBlockId, chId)
-                                },
-                                onToggleTopic = { chBlockId, topId ->
-                                    viewModel.toggleTopicForBookBlock(bookBlock.bookBlockId, chBlockId, topId)
-                                },
-                                onIncrementPeriod = {
-                                    viewModel.incrementPeriodForBook(bookBlock.bookBlockId)
-                                },
-                                onDecrementPeriod = {
-                                    viewModel.decrementPeriodForBook(bookBlock.bookBlockId)
-                                },
-                                onStudyDurationChange = { minutes ->
-                                    viewModel.setStudyDurationForBook(bookBlock.bookBlockId, minutes)
-                                },
-                                onBreakDurationChange = { minutes ->
-                                    viewModel.setBreakDurationForBook(bookBlock.bookBlockId, minutes)
-                                },
-                                onDeleteBook = {
-                                    viewModel.removeBookBlock(bookBlock.bookBlockId)
-                                },
-                            )
-                        }
-                    }
+                // 3. Planned Study Sessions List
+                items(
+                    items = state.sessions,
+                    key = { it.id },
+                ) { session ->
+                    PixelPerfectSessionCard(
+                        session = session,
+                        onEditClick = { viewModel.openEditSession(session) },
+                        onDeleteClick = { viewModel.removeStudySession(session.id) },
+                    )
+                }
 
-                    // 3. Add Another Book Button ("+ افزودن کتاب جدید به برنامه")
-                    item(key = "add_book_action") {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 20.dp),
-                        ) {
-                            Surface(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(48.dp)
-                                    .clip(RoundedCornerShape(16.dp))
-                                    .clickable { viewModel.addBookBlock() }
-                                    .testTag("add_book_button"),
-                                shape = RoundedCornerShape(16.dp),
-                                color = Color(0xFFF5F3FF),
-                                border = BorderStroke(1.2.dp, Color(0xFFC4B5FD)),
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxSize(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Center,
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Add,
-                                        contentDescription = null,
-                                        tint = PlanPurple,
-                                        modifier = Modifier.size(20.dp),
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = stringResource(id = R.string.create_plan_add_book_action),
-                                        color = PlanPurple,
-                                        fontFamily = IranSansFontFamily,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 14.sp,
-                                    )
-                                }
-                            }
-                        }
-                    }
+                // 4. "+ افزودن جلسه جدید" Dashed Button
+                item(key = "add_session_button") {
+                    AddSessionDashedButton(
+                        onClick = { viewModel.showAddSessionSheet() },
+                    )
                 }
             }
 
-            if (state.isSummaryModalVisible) {
-                MultiBookPlanSummaryBottomSheet(
-                    state = state,
-                    onDismiss = { viewModel.hideSummaryModal() },
-                    onConfirmSubmit = {
-                        viewModel.confirmAndSubmitPlan(onSuccess = onNavigateToTasks)
+            // Calendar Picker Modal
+            if (showCalendarModal) {
+                JalaliMonthCalendarDialog(
+                    initialDate = state.selectedDate,
+                    onDismiss = { showCalendarModal = false },
+                    onDateSelected = { newDate ->
+                        showCalendarModal = false
+                        viewModel.selectDate(newDate)
+                    },
+                )
+            }
+
+            // Add / Edit Study Session Modal
+            if (state.isAddSessionSheetVisible) {
+                AddStudySessionModal(
+                    editingSession = state.editingSession,
+                    onDismiss = { viewModel.hideAddSessionSheet() },
+                    onConfirmAdd = { title, topic, startTime, duration, category ->
+                        val currentEditing = state.editingSession
+                        if (currentEditing != null) {
+                            viewModel.updateStudySession(
+                                sessionId = currentEditing.id,
+                                subjectTitle = title,
+                                chapterTopic = topic,
+                                startTime = startTime,
+                                durationMinutes = duration,
+                                category = category,
+                            )
+                        } else {
+                            viewModel.addStudySession(
+                                subjectTitle = title,
+                                chapterTopic = topic,
+                                startTime = startTime,
+                                durationMinutes = duration,
+                                category = category,
+                            )
+                        }
                     },
                 )
             }

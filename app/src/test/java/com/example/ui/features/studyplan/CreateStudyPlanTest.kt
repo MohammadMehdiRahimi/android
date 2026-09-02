@@ -147,4 +147,33 @@ class CreateStudyPlanTest {
             }
         }
     }
+
+    @Test
+    fun `test add study session helper methods and state interactions`() {
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        val vm = CreateStudyPlanViewModel(app)
+
+        val firstBook = vm.state.value.bookBlocks.first()
+        val initialPeriod = firstBook.periodCount
+
+        vm.incrementCycleCount()
+        assertEquals(initialPeriod + 1, vm.state.value.bookBlocks.first().periodCount)
+
+        vm.decrementCycleCount()
+        assertEquals(initialPeriod, vm.state.value.bookBlocks.first().periodCount)
+
+        vm.updateStudyDuration(90)
+        assertEquals(90, vm.state.value.bookBlocks.first().studyDurationMinutes)
+
+        vm.updateRestDuration(30)
+        assertEquals(30, vm.state.value.bookBlocks.first().breakDurationMinutes)
+
+        val initialChapterCount = vm.state.value.bookBlocks.first().chapterBlocks.size
+        vm.addChapterSection()
+        assertEquals(initialChapterCount + 1, vm.state.value.bookBlocks.first().chapterBlocks.size)
+
+        val secondChapterId = vm.state.value.bookBlocks.first().chapterBlocks[1].blockId
+        vm.removeChapterSection(secondChapterId)
+        assertEquals(initialChapterCount, vm.state.value.bookBlocks.first().chapterBlocks.size)
+    }
 }

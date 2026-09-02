@@ -45,6 +45,7 @@ fun ExamsScreen(
     val colors = LocalShetabColors.current
     val uiState by viewModel.uiState.collectAsState()
     var selectedExamForDetails by remember { mutableStateOf<ExamListItem?>(null) }
+    var examIdInput by remember { mutableStateOf("") }
 
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
         Box(
@@ -105,6 +106,99 @@ fun ExamsScreen(
                             tint = colors.primaryText.copy(alpha = 0.75f),
                             modifier = Modifier.size(20.dp)
                         )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // === Exam ID Search Box ===
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 4.dp)
+                        .testTag("exam_id_search_card"),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, colors.primaryText.copy(alpha = 0.08f))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_clipboard_check),
+                            contentDescription = null,
+                            tint = Color(0xFF7C3AED),
+                            modifier = Modifier.size(22.dp)
+                        )
+
+                        OutlinedTextField(
+                            value = examIdInput,
+                            onValueChange = { examIdInput = it },
+                            placeholder = {
+                                Text(
+                                    text = "ورود با شناسه آزمون (مثلاً: ۱۲۳)...",
+                                    fontSize = 12.sp,
+                                    color = colors.secondaryText.copy(alpha = 0.6f),
+                                    fontFamily = IranSansFontFamily
+                                )
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("exam_id_search_input"),
+                            singleLine = true,
+                            textStyle = androidx.compose.ui.text.TextStyle(
+                                fontSize = 13.sp,
+                                color = colors.primaryText,
+                                fontFamily = IranSansFontFamily,
+                                fontWeight = FontWeight.Bold
+                            ),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color.Transparent,
+                                unfocusedBorderColor = Color.Transparent,
+                                cursorColor = Color(0xFF7C3AED),
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent
+                            ),
+                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                                imeAction = androidx.compose.ui.text.input.ImeAction.Go
+                            ),
+                            keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                                onGo = {
+                                    val trimmed = examIdInput.trim()
+                                    if (trimmed.isNotEmpty()) {
+                                        navController.navigate("exam_details/${android.net.Uri.encode(trimmed)}")
+                                    }
+                                }
+                            )
+                        )
+
+                        Button(
+                            onClick = {
+                                val trimmed = examIdInput.trim()
+                                if (trimmed.isNotEmpty()) {
+                                    navController.navigate("exam_details/${android.net.Uri.encode(trimmed)}")
+                                }
+                            },
+                            modifier = Modifier
+                                .height(40.dp)
+                                .testTag("submit_exam_id_button"),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
+                            contentPadding = PaddingValues(horizontal = 14.dp)
+                        ) {
+                            Text(
+                                text = "ورود",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                fontFamily = IranSansFontFamily
+                            )
+                        }
                     }
                 }
 

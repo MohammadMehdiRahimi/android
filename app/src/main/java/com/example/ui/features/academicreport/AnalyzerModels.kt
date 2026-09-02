@@ -2,8 +2,13 @@ package com.example.ui.features.academicreport
 
 enum class AnalyzerTimeframe(val title: String) {
     LAST_WEEK("هفته گذشته"),
-    LAST_MONTH("ماه گذشته"),
-    LAST_3_MONTHS("۳ ماه گذشته")
+    LAST_3_MONTHS("۳ ماه گذشته"),
+    LAST_MONTH("ماه گذشته")
+}
+
+enum class AnalysisTabType {
+    STRENGTHS,
+    WEAKNESSES
 }
 
 enum class MetricTrend {
@@ -46,56 +51,31 @@ data class AiInsightItem(
 
 enum class InsightType {
     RECOMMENDATION,
-    PEAK_FOCUS,
-    LEARNING_STYLE
+    PEAK_FOCUS
 }
 
 data class AnalyzerUiState(
     val selectedTimeframe: AnalyzerTimeframe = AnalyzerTimeframe.LAST_WEEK,
-    val userName: String = "سینا رحیمی",
+    val userName: String = "پوریا",
     val isUserActive: Boolean = true,
-    val unreadNotificationsCount: Int = 2,
-    val aiScoreImprovement: String = "۲.۲٪",
     val aiInsightParagraphs: List<String> = listOf(
-        "عملکرد شما نسبت به هفته قبل ۲.۲٪ بهتر شده است.",
+        "عملکرد شما نسبت به هفته قبل ۷.۲٪ بهتر شده است.",
         "در درس ریاضی و فیزیک پیشرفت خوبی داشته‌اید.",
         "برای افزایش درصد توصیه‌می‌شود روی مباحث ادبیات تمرکز بیشتری داشته باشید."
     ),
     val aiInsights: List<AiInsightItem> = listOf(
         AiInsightItem(title = "پیشنهاد ما", value = "مرور مباحث ادبیات", type = InsightType.RECOMMENDATION),
-        AiInsightItem(title = "بیشترین تمرکز", value = "شب ها (۲۰-۲۲)", type = InsightType.PEAK_FOCUS),
-        AiInsightItem(title = "سبک یادگیری", value = "دیداری", type = InsightType.LEARNING_STYLE),
+        AiInsightItem(title = "بهترین تمرکز", value = "شب ها (۲۰-۲۴)", type = InsightType.PEAK_FOCUS),
     ),
-    val metrics: List<MetricCardData> = listOf(
-        MetricCardData(
-            title = "تعداد آزمون",
-            value = 6,
-            subtitle = "۴ آزمون",
-            trend = MetricTrend.NEUTRAL,
-            iconType = MetricIconType.EXAM_COUNT,
-        ),
-        MetricCardData(
-            title = "تست غلط",
-            value = 158,
-            subtitle = "▼ ۸٪",
-            trend = MetricTrend.NEGATIVE,
-            iconType = MetricIconType.WRONG_TESTS,
-        ),
-        MetricCardData(
-            title = "تست صحیح",
-            value = 328,
-            subtitle = "۶۷٪ موفقیت",
-            trend = MetricTrend.NEUTRAL,
-            iconType = MetricIconType.CORRECT_TESTS,
-        ),
-        MetricCardData(
-            title = "تعداد تست",
-            value = 486,
-            subtitle = "▲ ۱۵٪",
-            trend = MetricTrend.POSITIVE,
-            iconType = MetricIconType.TOTAL_TESTS,
-        ),
-    ),
+    val correctTestsCount: Int = 328,
+    val correctTestsSubtitle: String = "۶۷.۳ درصد موفقیت",
+    val totalTestsCount: Int = 486,
+    val totalTestsSubtitle: String = "▲ ۱۵٪ نسبت به هفته قبل",
+    val totalExamsCount: Int = 6,
+    val totalExamsSubtitle: String = "۴ آزمون",
+    val wrongTestsCount: Int = 158,
+    val wrongTestsSubtitle: String = "▼ ۸٪ نسبت به هفته قبل",
+    val activeStrengthsTab: AnalysisTabType = AnalysisTabType.STRENGTHS,
     val weaknesses: List<SubjectPerformance> = listOf(
         SubjectPerformance(name = "فیزیک", percentage = 31),
         SubjectPerformance(name = "ادبیات", percentage = 42),
@@ -110,9 +90,10 @@ data class AnalyzerUiState(
         StudyDistributionPoint(timeSlot = "۰-۴", hours = 0.8f),
         StudyDistributionPoint(timeSlot = "۴-۸", hours = 1.4f),
         StudyDistributionPoint(timeSlot = "۸-۱۲", hours = 2.3f),
-        StudyDistributionPoint(timeSlot = "۱۲-۱۶", hours = 3.0f, isPeak = true),
-        StudyDistributionPoint(timeSlot = "۱۶-۲۰", hours = 1.6f),
+        StudyDistributionPoint(timeSlot = "۱۲-۱۶", hours = 3.6f, isPeak = true),
+        StudyDistributionPoint(timeSlot = "۱۶-۲۰", hours = 2.0f),
         StudyDistributionPoint(timeSlot = "۲۰-۲۴", hours = 0.6f),
     ),
+    val peakStudyHoursBadge: String = "۳ ساعت",
     val isLoading: Boolean = false,
 )

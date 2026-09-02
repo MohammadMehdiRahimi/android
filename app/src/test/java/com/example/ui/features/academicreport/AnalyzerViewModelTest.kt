@@ -27,14 +27,15 @@ class AnalyzerViewModelTest {
     fun initialState_hasDefaultLastWeekTimeframeAndMetrics() {
         val state = viewModel.uiState.value
         assertEquals(AnalyzerTimeframe.LAST_WEEK, state.selectedTimeframe)
-        assertEquals(4, state.metrics.size)
-        assertEquals(486, state.metrics.first { it.title == "تعداد تست" }.value)
-        assertEquals(158, state.metrics.first { it.title == "تست غلط" }.value)
-        assertEquals(328, state.metrics.first { it.title == "تست صحیح" }.value)
-        assertEquals(6, state.metrics.first { it.title == "تعداد آزمون" }.value)
+        assertEquals(486, state.totalTestsCount)
+        assertEquals(158, state.wrongTestsCount)
+        assertEquals(328, state.correctTestsCount)
+        assertEquals(6, state.totalExamsCount)
+        assertEquals(2, state.aiInsights.size)
         assertEquals(3, state.weaknesses.size)
         assertEquals(3, state.strengths.size)
         assertEquals(6, state.studyDistribution.size)
+        assertEquals(AnalysisTabType.STRENGTHS, state.activeStrengthsTab)
     }
 
     @Test
@@ -42,13 +43,23 @@ class AnalyzerViewModelTest {
         viewModel.selectTimeframe(AnalyzerTimeframe.LAST_MONTH)
         var state = viewModel.uiState.value
         assertEquals(AnalyzerTimeframe.LAST_MONTH, state.selectedTimeframe)
-        assertEquals(1960, state.metrics.first { it.title == "تعداد تست" }.value)
+        assertEquals(1960, state.totalTestsCount)
+        assertEquals(2, state.aiInsights.size)
         assertTrue(state.aiInsightParagraphs.isNotEmpty())
 
         viewModel.selectTimeframe(AnalyzerTimeframe.LAST_3_MONTHS)
         state = viewModel.uiState.value
         assertEquals(AnalyzerTimeframe.LAST_3_MONTHS, state.selectedTimeframe)
-        assertEquals(6100, state.metrics.first { it.title == "تعداد تست" }.value)
+        assertEquals(6100, state.totalTestsCount)
+        assertEquals(2, state.aiInsights.size)
+    }
+
+    @Test
+    fun selectStrengthsTab_updatesActiveTab() {
+        viewModel.selectStrengthsTab(AnalysisTabType.WEAKNESSES)
+        assertEquals(AnalysisTabType.WEAKNESSES, viewModel.uiState.value.activeStrengthsTab)
+        viewModel.selectStrengthsTab(AnalysisTabType.STRENGTHS)
+        assertEquals(AnalysisTabType.STRENGTHS, viewModel.uiState.value.activeStrengthsTab)
     }
 
     @Test
@@ -57,6 +68,6 @@ class AnalyzerViewModelTest {
         val peakSlot = state.studyDistribution.find { it.isPeak }
         assertNotNull(peakSlot)
         assertEquals("۱۲-۱۶", peakSlot?.timeSlot)
-        assertEquals(3.0f, peakSlot?.hours)
+        assertEquals(3.6f, peakSlot?.hours)
     }
 }
